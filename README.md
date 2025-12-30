@@ -27,7 +27,9 @@ Built specifically for high-tension **FPS games (Valorant, CS, Tarkov, Dark Soul
 ### 2. Stabilizers (The Pro Tools)
 *   **Black Stabilizer**: Performs a surgical "floor cut". Lifts dark pixels into visibility. **Essential for FPS gamers.**
 *   **White Stabilizer**: Sets a "ceiling" for brightness. Prevents highlight clipping and protects your eyes.
-*   **Mid-Tone**: Adjusts the "belly" of the curve. Use this to shift the weight of the image without affecting true blacks or whites.
+*   **Shadow**: Targets the darkest regions specifically. Perfect for bringing out detail in dark textures without washing out the rest of the scene.
+*   **Mid-Tone**: Adjusts the "belly" of the curve. Use this to shift the weight of the image, making it feel overall brighter or moodier without affecting true blacks or whites (Default: **0.5**).
+*   **Highlight**: Focuses on the brightest areas. Use this to prevent white "blowout" in bright skies or to add extra punch to light sources.
 
 ### 3. Extras
 *   **Darkness**: Fine-tune the absolute black floor of your monitor.
