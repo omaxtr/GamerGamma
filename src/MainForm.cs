@@ -99,7 +99,7 @@ namespace GamerGamma
             // Profiles
             grpProf = CreateGroup("Profiles", boxW + 40); // Match width
             grpProf.Height = 310; 
-            cbProfiles = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = boxW + 10, BackColor = Color.FromArgb(60,60,60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            cbProfiles = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = boxW - 20, BackColor = Color.FromArgb(60,60,60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
             var btnSave = new Button { Text = "Save", Width = 80, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,5,0) };
             var btnDel = new Button { Text = "Delete", Width = 80, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,5,0) };
             var btnBind = new Button { Text = "Set Hotkey", Width = 100, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,0,0) };
@@ -419,8 +419,12 @@ namespace GamerGamma
             if (m.Msg == 0x0312) { // WM_HOTKEY
                 int id = m.WParam.ToInt32();
                 if (id >= 0 && id < _profiles.Count) {
+                    _ignoreEvents = true;
+                    cbProfiles.SelectedIndex = id;
+                    _ignoreEvents = false;
                     _gamma.ApplySettings(_profiles[id].Settings);
                     UpdateUIValues();
+                    DrawPreview();
                 }
             }
             base.WndProc(ref m);
