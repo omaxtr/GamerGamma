@@ -12,6 +12,9 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+    <Version>1.1.0-beta</Version>
+    <Authors>omaxtr</Authors>
+    <Description>Tactical Gamma Adjustment Utility for Gamers</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Platform)'=='x64'">

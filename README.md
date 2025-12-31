@@ -1,4 +1,4 @@
-# Gamer Gamma v1.0 Beta
+# Gamer Gamma v1.1 Beta
 
 ![Gamer Gamma Screenshot](./gamergamma.png)
 
@@ -10,10 +10,10 @@ No 3D fluff. No account required. Just pure control over your pixels.
 ---
 
 ## Tactical Gaming Advantage: "Daylight in the Dark"
-Built specifically for high-tension **FPS games (Valorant, CS, Tarkov, Dark Souls)**, Gamer Gamma gives you a legal tactical edge:
+Built specifically for high-tension **FPS games (Valorant, CS, Tarkov, Dark Souls)**, Gamer Gamma gives you a professional tactical edge:
 
-*   **Turn Night into Day**: Using the **Black Stabilizer**, you can lift the darkest shadows so enemies hiding in corners become visible as if it were daylight, all without washing out the rest of your screen or losing visibility in bright areas.
-*   **Prevent Flash Blindness**: Use the **White Stabilizer** to cap the peak brightness. Don't get blinded by in-game flashes or bright sun—keep your eyes focused on the target.
+*   **Black Stabilizer (LG-Style Logic)**: Unlike standard brightness, this uses a non-linear power curve to lift dark shadows. Enemies hiding in pitch-black corners become visible while preserving the overall contrast of the game.
+*   **White Stabilizer**: The highlight equivalent of the Black Stabilizer. Smoothly adjusts bright areas without instantly washing out the image.
 
 ---
 
@@ -21,20 +21,20 @@ Built specifically for high-tension **FPS games (Valorant, CS, Tarkov, Dark Soul
 
 ### 1. Levels (The Basics)
 *   **Brightness**: Overall display gain.
-*   **Contrast**: Control the depth between light and dark (Default: **0.5**).
+*   **Contrast**: Control the depth between light and dark (Default: **1.0**).
 *   **Saturation**: Make those game colors pop or go moody grayscale.
 
 ### 2. Stabilizers (The Pro Tools)
-*   **Black Stabilizer**: Performs a surgical "floor cut". Lifts dark pixels into visibility. **Essential for FPS gamers.**
-*   **White Stabilizer**: Sets a "ceiling" for brightness. Prevents highlight clipping and protects your eyes.
-*   **Shadow**: Targets the darkest regions specifically. Perfect for bringing out detail in dark textures without washing out the rest of the scene.
-*   **Mid-Tone**: Adjusts the "belly" of the curve. Use this to shift the weight of the image, making it feel overall brighter or moodier without affecting true blacks or whites (Default: **0.5**).
-*   **Highlight**: Focuses on the brightest areas. Use this to prevent white "blowout" in bright skies or to add extra punch to light sources.
+*   **Black Stabilizer**: The "LG Style" feature. Smoothly lifts shadows using a gamma curve. **Essential for spotting enemies.**
+*   **White Stabilizer**: Smoothly adjusts highlights and bright regions.
+*   **Mid-Gamma**: Adjusts the "belly" of the curve. Use this to shift the weight of the image, making it feel overall brighter or moodier without affecting true blacks or whites (Default: **0.0**).
+*   **Black Floor**: Performs a surgical "floor cut". Forcefully lifts dark pixels into visibility. More aggressive than the stabilizer.
+*   **White Ceiling**: Sets a "hard ceiling" for brightness. Prevents highlight clipping and protects your eyes from "flashbang" whites.
 
 ### 3. Extras
-*   **Darkness**: Fine-tune the absolute black floor of your monitor.
+*   **Black Level**: Fine-tune the absolute black floor of your monitor. Shifting this shifts the whole image spectrum.
 *   **Hue**: Shift the entire color spectrum for creative or corrective effects.
-*   **Dither**: Dramatically reduces color banding on lower-quality panels.
+*   **Dither**: Dramatically reduces color banding on lower-quality panels by adding subtle noise.
 
 ---
 
@@ -42,11 +42,14 @@ Built specifically for high-tension **FPS games (Valorant, CS, Tarkov, Dark Soul
 *   **Flexible Hotkeys**: Bind any combination (e.g., **Ctrl+1**, **Alt+F1**) to switch profiles instantly mid-match.
 *   **Profiles**: Save custom setups for different games or lighting conditions.
 *   **Minimize to Tray**: Send the app to the system tray (Lightbulb icon) to keep your workspace clean.
+*   **Auto-Persistence**: Remembers your last used settings, monitor selection, and "Minimize to Tray" state automatically.
+*   **Start with Windows**: One-click toggle to have the app launch and apply your settings in the background every time you boot.
+
+---
 
 ## Credits & Inspiration
-**Gamer Gamma** is the spiritual successor to **Gamma Panel**. When the legend stopped working on modern Windows, Gamer Gamma was born to keep the legacy alive.
+**Gamer Gamma** is the spiritual successor to **Gamma Panel** (Original by Tomaž Šolc). When the legend stopped working on modern Windows, Gamer Gamma was born to keep the legacy alive.
 
 Built with ❤️ for gamers.
 Implementation: **omaxtr**
 Logic Assistant: **Antigravity AI**
-

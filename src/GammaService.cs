@@ -119,41 +119,67 @@ namespace GamerGamma
             {
                 double val = i / 255.0;
 
-                // 1. Black Level (Floor)
+                // 1. Black Level
                 val = ch.BlackLevel + val * (1.0 - ch.BlackLevel);
 
-                // 2. Shadow Stabilizer (Lift Shadows)
-                if (ch.ShadowStab > 0)
+                // 2. Black Stabilizer (Lift Shadows - LG Style)
+                if (Math.Abs(ch.BlackStab) > 0.001)
                 {
-                    double sFactor = 1.0 - (ch.ShadowStab * 0.5);
-                    val = Math.Pow(val, sFactor);
+                    if (ch.BlackStab > 0)
+                    {
+                         // Lift shadows (bow upwards)
+                         val = Math.Pow(val, Math.Max(0.1, 1.0 - (ch.BlackStab * 0.6)));
+                    }
+                    else
+                    {
+                         // Crush shadows (bow downwards aggressively)
+                         val = Math.Pow(val, 1.0 + (Math.Abs(ch.BlackStab) * 2.5));
+                    }
                 }
 
                 // 3. Contrast (Pivot 0.5)
-                double cMult = ch.Contrast * 2.0; // Map 0.5 (def) -> 1.0
+                double cMult = ch.Contrast; // 1.0 is neutral
                 val = 0.5 + (val - 0.5) * cMult;
                 
-                // 4. Black Stabilizer (Floor cut - 90 deg)
-                if (ch.BlackStab > 0)
+                // 4. Black Floor (Hard cut)
+                if (Math.Abs(ch.BlackFloor) > 0.001)
                 {
-                    double floor = ch.BlackStab * 0.5;
-                    if (val < floor) val = floor;
+                    if (ch.BlackFloor > 0)
+                    {
+                        double floor = ch.BlackFloor * 0.5;
+                        if (val < floor) val = floor;
+                    }
+                    else
+                    {
+                        // Negative: Deepen blacks by applying an offset
+                        double crush = Math.Abs(ch.BlackFloor) * 0.2;
+                        val = Math.Max(0, val - crush);
+                    }
                 }
 
-                // 5. Highlight Stabilizer (Inverse Shadow)
-                if (ch.HighlightStab > 0)
+                // 5. White Stabilizer (Smooth Highlights)
+                if (Math.Abs(ch.WhiteStab) > 0.001)
                 {
                     double inv = 1.0 - val;
-                    double hFactor = 1.0 - (ch.HighlightStab * 0.4);
-                    inv = Math.Pow(inv, hFactor);
+                    double hFactor = 1.0 - (ch.WhiteStab * 0.4);
+                    inv = Math.Pow(inv, Math.Max(0.1, hFactor));
                     val = 1.0 - inv;
                 }
 
-                // 6. White Stabilizer (Ceiling)
-                if (ch.WhiteStab > 0)
+                // 6. White Ceiling (Hard Ceiling cut)
+                if (Math.Abs(ch.WhiteCeiling) > 0.001)
                 {
-                    double ceil = 1.0 - (ch.WhiteStab * 0.5);
-                    if (val > ceil) val = ceil;
+                    if (ch.WhiteCeiling > 0)
+                    {
+                        double ceil = 1.0 - (ch.WhiteCeiling * 0.5);
+                        if (val > ceil) val = ceil;
+                    }
+                    else
+                    {
+                        // Negative: Boost highlights
+                        double boost = Math.Abs(ch.WhiteCeiling) * 0.2;
+                        val = Math.Min(1.0, val + boost);
+                    }
                 }
 
                 // Clamp before Gamma
@@ -163,11 +189,11 @@ namespace GamerGamma
                 double g = Math.Max(0.1, ch.Gamma);
                 val = Math.Pow(val, 1.0 / g);
 
-                // 7. Mid-Tone Gamma (Bias)
-                if (Math.Abs(ch.MidTone - 0.5) > 0.01)
+                // 7. Mid-Gamma (0.0 is neutral, effective 1.0)
+                if (Math.Abs(ch.MidGamma) > 0.01)
                 {
-                    double mt = ch.MidTone * 2.0; // 1.0 neutral
-                    val = Math.Pow(val, 1.0 / mt);
+                    double mt = 1.0 + ch.MidGamma; 
+                    val = Math.Pow(val, 1.0 / Math.Max(0.1, mt));
                 }
 
                 // 8. Brightness (Offset)
