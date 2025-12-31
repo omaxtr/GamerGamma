@@ -66,6 +66,7 @@ namespace GamerGamma
         public List<ColorProfile> Profiles { get; set; } = new List<ColorProfile>();
         public int SelectedProfileIndex { get; set; } = -1;
         public bool MinimizeToTray { get; set; } = false;
+        public bool StartMinimized { get; set; } = false;
         public string SelectedMonitorDeviceName { get; set; }
         public ExtendedColorSettings CurrentSettings { get; set; } = new ExtendedColorSettings();
     }

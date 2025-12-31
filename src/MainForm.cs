@@ -32,6 +32,7 @@ namespace GamerGamma
         private AppSettings _appSettings;
         private string _settingsPath;
         private CheckBox chkStartWithWin;
+        private CheckBox chkStartMinimized;
         private bool _ignoreEvents = false;
         private int boxW = 310;   // Main groups (Mid/Right)
         private int leftW = 190;  // Even narrower left column (Final)
@@ -39,7 +40,7 @@ namespace GamerGamma
 
         public MainForm()
         {
-            this.Text = "Gamer Gamma v1.1 Beta";
+            this.Text = "Gamer Gamma v1.2";
             this.Size = new Size(1300, 640); 
             this.BackColor = Color.FromArgb(28, 28, 28);
             this.ForeColor = Color.White;
@@ -105,10 +106,12 @@ namespace GamerGamma
             var btnSave = new Button { Text = "Save", Width = 50, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,5,0) };
             var btnDel = new Button { Text = "Del", Width = 45, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,5,0) };
             var btnBind = new Button { Text = "Bind", Width = 50, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,50), Margin = new Padding(0,5,0,0) };
-            chkMinimizeToTray = new CheckBox { Text = "Minimize to Tray", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
-            chkMinimizeToTray.CheckedChanged += (s, e) => SaveSettings();
-            chkStartWithWin = new CheckBox { Text = "Start with Windows", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 2, 0, 0) };
+            chkStartWithWin = new CheckBox { Text = "Start with Windows", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
             chkStartWithWin.CheckedChanged += (s, e) => { SetStartWithWindows(chkStartWithWin.Checked); SaveSettings(); };
+            chkMinimizeToTray = new CheckBox { Text = "Minimize to Tray", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 2, 0, 0) };
+            chkMinimizeToTray.CheckedChanged += (s, e) => SaveSettings();
+            chkStartMinimized = new CheckBox { Text = "Start Minimized", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 2, 0, 0) };
+            chkStartMinimized.CheckedChanged += (s, e) => SaveSettings();
 
             var btnExport = new Button { Text = "Export", Width = 75, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,80), Margin = new Padding(0,5,5,0) };
             var btnImport = new Button { Text = "Import", Width = 75, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,80,50), Margin = new Padding(0,5,0,0) };
@@ -117,8 +120,9 @@ namespace GamerGamma
             var btnRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
             btnRow.Controls.AddRange(new Control[] { btnSave, btnDel, btnBind });
             grpProf.Controls.Add(btnRow);
-            grpProf.Controls.Add(chkMinimizeToTray);
             grpProf.Controls.Add(chkStartWithWin);
+            grpProf.Controls.Add(chkMinimizeToTray);
+            grpProf.Controls.Add(chkStartMinimized);
             
             var btnRow2 = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
             btnRow2.Controls.AddRange(new Control[] { btnExport, btnImport });
@@ -134,7 +138,9 @@ namespace GamerGamma
             var pnlProfBtns = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0,5,0,0) };
             pnlProfBtns.Controls.AddRange(new[] { btnSave, btnDel, btnBind });
             grpProf.Controls.Add(pnlProfBtns);
+            grpProf.Controls.Add(chkStartWithWin);
             grpProf.Controls.Add(chkMinimizeToTray);
+            grpProf.Controls.Add(chkStartMinimized);
             var pnlIOBtns = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0,5,0,0) };
             pnlIOBtns.Controls.AddRange(new[] { btnExport, btnImport });
             grpProf.Controls.Add(pnlIOBtns);
@@ -201,7 +207,7 @@ namespace GamerGamma
             root.Controls.Add(grpPreview, 3, 0);
 
             // Footer
-            var lblFooter = new Label { Text = "© omaxtr 2025 / twitch.tv/omaxtr / Gamer Gamma v1.1 Beta", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Gray, Font = new Font("Consolas", 8) };
+            var lblFooter = new Label { Text = "© omaxtr 2025 / twitch.tv/omaxtr / Gamer Gamma v1.2", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, ForeColor = Color.Gray, Font = new Font("Consolas", 8) };
             root.Controls.Add(lblFooter, 0, 1);
             root.SetColumnSpan(lblFooter, 4);
 
@@ -230,10 +236,22 @@ namespace GamerGamma
 
             chkMinimizeToTray.Checked = _appSettings.MinimizeToTray;
             chkStartWithWin.Checked = GetStartWithWindows();
+            chkStartMinimized.Checked = _appSettings.StartMinimized;
 
             UpdateUIValues();
             DrawPreview();
             _ignoreEvents = false;
+
+            // Apply start minimized behavior
+            if (_appSettings.StartMinimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                if (_appSettings.MinimizeToTray)
+                {
+                    this.Hide();
+                    trayIcon.Visible = true;
+                }
+            }
         }
 
         private void SetStartWithWindows(bool start)
@@ -672,6 +690,7 @@ namespace GamerGamma
             if (_ignoreEvents) return;
             _appSettings.CurrentSettings = _gamma.GetCurrentSettings();
             _appSettings.MinimizeToTray = chkMinimizeToTray.Checked;
+            _appSettings.StartMinimized = chkStartMinimized.Checked;
             _appSettings.SelectedProfileIndex = cbProfiles.SelectedIndex;
             
             if (cbMonitors.SelectedIndex >= 0) {
