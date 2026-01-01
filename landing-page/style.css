@@ -934,36 +934,15 @@ body {
         align-items: center;
     }
 
-/* 1. Define the Keyframes */
-@keyframes logo-pulse {
-    0% {
-        filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
-        transform: scale(1);
-    }
-    50% {
-        /* Dual glow: Orange + Purple */
-        filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.7)) 
-                drop-shadow(0 0 20px rgba(168, 85, 247, 0.3));
-        transform: scale(1.08);
-    }
-    100% {
-        filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
-        transform: scale(1);
-    }
+.logo svg {
+    /* Pink glow that complements the purple and orange */
+    filter: drop-shadow(0 0 5px rgba(236, 72, 153, 0.4));
+    transition: filter 0.3s ease;
 }
 
-/* 2. Apply to the Header Logo SVG only */
-.logo .breathing-logo {
-    display: inline-block !important; /* Forces transform to work */
-    animation: logo-pulse 4s ease-in-out infinite !important;
-    transform-origin: center center;
-    vertical-align: middle;
+.logo:hover svg {
+    filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.7));
 }
-
-/* 3. Speed up on Hover */
-.logo:hover .breathing-logo {
-    animation-duration: 1.5s !important;
-} 
    
    /* 1. Layout for the Primary Row (Download + Badge) */
 .hero-buttons-row {
@@ -1072,6 +1051,7 @@ body {
         text-align: center;
     }
 }
+
 
 
 
