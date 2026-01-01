@@ -298,6 +298,70 @@ body {
     animation: pulse 3s ease-in-out infinite;
 }
 
+/* VirusTotal Badge Styling */
+.vt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px 8px 12px;
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    height: 54px; /* Matches the height of the Download button roughly */
+}
+
+.vt-badge:hover {
+    background: rgba(34, 197, 94, 0.1); /* Subtle green tint on hover */
+    border-color: rgba(34, 197, 94, 0.4);
+    transform: translateY(-2px);
+}
+
+.vt-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid #22c55e; /* Green Circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #22c55e; /* Green Checkmark */
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
+
+.vt-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.vt-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.vt-status {
+    font-size: 1rem;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* Mobile Alignment Fix */
+@media (max-width: 768px) {
+    .hero-buttons {
+        flex-direction: column;
+        align-items: stretch; /* Makes buttons full width on mobile */
+    }
+    
+    .vt-badge {
+        justify-content: center; /* Centers the badge content on mobile */
+    }
+}
+
 @keyframes pulse {
     0%, 100% { box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4); }
     50% { box-shadow: 0 8px 40px rgba(212, 175, 55, 0.6); }
@@ -845,3 +909,4 @@ body {
         align-items: center;
     }
 }
+
