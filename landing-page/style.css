@@ -1096,6 +1096,13 @@ body {
     align-items: center;
 }
 
+.bulb-icon {
+    overflow: visible !important;
+    display: inline-block !important;
+    /* Use the gold pulse animation we made */
+    animation: bulb-pulse-gold 3s ease-in-out infinite !important;
+    transform-origin: center center !important;
+}
 
 
 
