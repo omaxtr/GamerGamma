@@ -916,3 +916,18 @@ body {
         justify-content: center;
     }
 }
+/* GitHub Link Styling */
+.github-link {
+    color: #a855f7; /* Your brand purple */
+    text-decoration: none;
+    font-weight: 600;
+    font-style: italic;
+    font-size: 0.85rem;
+    border-bottom: 1px solid transparent; /* Invisible underline by default */
+    transition: all 0.2s ease;
+}
+
+.github-link:hover {
+    border-bottom-color: #a855f7; /* Purple underline appears on hover */
+    filter: brightness(1.2); /* Slight glow */
+}
