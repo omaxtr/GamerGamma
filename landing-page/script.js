@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Add scroll animations
+    // Add scroll animations (Triggered once only)
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (entry.isIntersecting) {
                 entry.target.style.opacity = '1';
                 entry.target.style.transform = 'translateY(0)';
+                // Stop observing after it has animated in once
+                observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
@@ -96,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeof end === 'number') {
                 element.textContent = Math.floor(progress * (end - start) + start);
             } else {
-                element.textContent = end; // For non-numeric values like ∞
+                element.textContent = end; 
             }
 
             if (progress < 1) {
@@ -128,19 +130,4 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.stat-value').forEach(stat => {
         statsObserver.observe(stat);
     });
-});
-
-// Add header scroll effect
-let lastScroll = 0;
-window.addEventListener('scroll', () => {
-    const header = document.querySelector('.header');
-    const currentScroll = window.pageYOffset;
-
-    if (currentScroll > 100) {
-        header.style.background = 'rgba(10, 10, 15, 0.95)';
-    } else {
-        header.style.background = 'rgba(10, 10, 15, 0.8)';
-    }
-
-    lastScroll = currentScroll;
 });
