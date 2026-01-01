@@ -985,16 +985,16 @@ body {
 }
 
 .github-link {
-    color: var(--purple-500);
+    color: var(--white-500);
     text-decoration: none;
     font-style: italic;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     border-bottom: 1px solid transparent;
     transition: border-color 0.2s;
 }
 
 .github-link:hover {
-    border-bottom-color: var(--purple-500);
+    border-bottom-color: var(--green-500);
 }
 
 /* Mobile Adjustments */
@@ -1015,5 +1015,6 @@ body {
         text-align: center;
     }
 }
+
 
 
