@@ -1,9 +1,14 @@
-# Gamer Gamma v1.3
+# Gamer Gamma v1.4
 
 ![Gamer Gamma Interface](./landing-page/gamergamma-promo.png)
 
 ## The Philosophy: Retro Simplicity
 Gamer Gamma is built for those who miss the "just works" efficiency of classic utilities like **Gamma Panel**. Unlike modern apps that are cluttered with 3D effects, heavy animations, and complex menus, Gamer Gamma goes back to basics: **Simple, high-response sliders that do exactly what they say.**
+
+## New in v1.4: Integrated Help System
+Gamer Gamma now features an **Educational Tooltip System** designed for non-professional users. Every slider, button, and control now provides a concise, plain-English explanation of its purpose when hovered.
+*   **Toggleable**: Enable or disable tooltips from the Profiles section.
+*   **Persistence**: The app remembers your tooltip preference across restarts.
 
 No 3D fluff. No account required. Just pure control over your pixels.
 
@@ -13,8 +18,8 @@ No 3D fluff. No account required. Just pure control over your pixels.
 Built specifically for high-tension **FPS games (Valorant, CS2, Tarkov, Dark Souls)**, Gamer Gamma gives you a professional tactical edge:
 
 *   **Black Stabilizer (LG-Style Logic)**: Unlike standard brightness, this uses a non-linear power curve to lift dark shadows. Enemies hiding in pitch-black corners become visible while preserving the overall contrast of the game.
-*   **Smart Contrast (v1.3)**: A macro control that surgically balances Black Stabilization, Mid-Gamma, and Clarity into a single slider for instant visibility optimization.
-*   **Point Curve Editor (v1.3)**: Professional-grade 10-bit precision curve editing. Sculpt your own response curves for each RGB channel with real-time "Show Output" feedback.
+*   **Smart Contrast (v1.4)**: A macro control that surgically balances Black Stabilization, Mid-Gamma, and Clarity into a single slider for instant visibility optimization.
+*   **Point Curve Editor (v1.4)**: Professional-grade 10-bit precision curve editing. Sculpt your own response curves for each RGB channel with real-time "Show Output" feedback.
 
 ---
 
@@ -30,7 +35,7 @@ Built specifically for high-tension **FPS games (Valorant, CS2, Tarkov, Dark Sou
 *   **White Stabilizer**: Bends the top of the curve. Prevents highlight clipping and protects your eyes from bright flashes.
 *   **Mid-Gamma**: Adjusts the center of the image spectrum. Lift this for a "brighter" perceived image without losing true black depth.
 
-### 3. Advanced Tools (v1.3)
+### 3. Advanced Tools (v1.4)
 
 ![Advanced Studio Suite](./landing-page/Advanced.png)
 
@@ -40,7 +45,7 @@ Built specifically for high-tension **FPS games (Valorant, CS2, Tarkov, Dark Sou
 *   **Tone Sculpt**: Adds subtle micro-contrast "bumps" to the spectrum, making textures pop.
 *   **Temperature & Tint**: Fine-tune color temperature for display correction or creative grading.
 
-### 4. Precision Curve Mapping (v1.3)
+### 4. Precision Curve Mapping (v1.4)
 
 ![Point Curve Editor](./landing-page/pointcurveditor.png)
 
@@ -65,7 +70,7 @@ Professional 10-bit precision **Point Curve Editor**:
 
 ## 📥 Download & Install
 
-**Latest Release**: [v1.3 - Download GamerGamma.exe](https://github.com/omaxtr/GamerGamma/releases/download/1.3/GamerGamma.exe)
+**Latest Release**: [v1.4 - Download GamerGamma.exe](https://github.com/omaxtr/GamerGamma/releases/download/1.4/GamerGamma.exe)
 
 1. Download `GamerGamma.exe` from the releases
 2. Run it - no installation needed!

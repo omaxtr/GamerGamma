@@ -21,6 +21,8 @@ namespace GamerGamma
         private string _targetDisplay;
         public string TargetDisplay { get => _targetDisplay; set { _targetDisplay = value; OnPropertyChanged(); Update(); } }
 
+        private double[] _lutR, _lutG, _lutB;
+
         // Channels
         public ChannelData Red { get; set; } = new ChannelData();
         public ChannelData Green { get; set; } = new ChannelData();
@@ -29,15 +31,10 @@ namespace GamerGamma
         // Global Core
         private double _saturation = 1.0; 
         private double _hue = 0.0;        
-        private double _luminance = 0.0;
-        private double _smartContrast = 0.0;
         public event Action OnSettingsChanged;
-        private double _deHaze = 0.0;
         private double _temperature = 0.0;
         private double _tint = 0.0;
-        private double _dithering = 0.0;
         private double _sharpness = 0.0;
-        private double _bump = 0.0;
         private TransferMode _transferMode = TransferMode.PowerLaw;
         
         // Pro / Nice to Have
@@ -66,27 +63,50 @@ namespace GamerGamma
 
         public double Saturation { get => _saturation; set { _saturation = value; OnPropertyChanged(); Update(); } }
         public double Hue { get => _hue; set { _hue = value; OnPropertyChanged(); Update(); } }
-        public double Luminance { get => _luminance; set { _luminance = value; OnPropertyChanged(); Update(); } }
+        public double Luminance { get => Red.Luminance; set { Red.Luminance = Green.Luminance = Blue.Luminance = value; OnPropertyChanged(); Update(); } }
         public double SmartContrast { 
-            get => _smartContrast; 
+            get => Red.SmartContrast; 
             set { 
-                _smartContrast = Math.Max(0, Math.Min(1, value)); 
+                var v = Math.Max(-1, Math.Min(1, value));
+                Red.SmartContrast = Green.SmartContrast = Blue.SmartContrast = v; 
                 OnPropertyChanged();
                 Update(); 
             } 
         }
-        public double DeHaze { get => _deHaze; set { _deHaze = value; OnPropertyChanged(); Update(); } }
+        public double DeHaze { get => Red.DeHaze; set { Red.DeHaze = Green.DeHaze = Blue.DeHaze = value; OnPropertyChanged(); Update(); } }
         public double Temperature { get => _temperature; set { _temperature = value; OnPropertyChanged(); Update(); } }
         public double Tint { get => _tint; set { _tint = value; OnPropertyChanged(); Update(); } }
+        public double WhiteLevel { get => Red.WhiteLevel; set { Red.WhiteLevel = Green.WhiteLevel = Blue.WhiteLevel = value; OnPropertyChanged(); Update(); } }
+        
+        public double Solarization { get => Red.Solarization; set { Red.Solarization = Green.Solarization = Blue.Solarization = value; OnPropertyChanged(); Update(); } }
+        public double Inversion { get => Red.Inversion; set { Red.Inversion = Green.Inversion = Blue.Inversion = value; OnPropertyChanged(); Update(); } }
+        public double Clipping { get => Red.Clipping; set { Red.Clipping = Green.Clipping = Blue.Clipping = value; OnPropertyChanged(); Update(); } }
+        
+        private string _selectedLut = "";
+        public string SelectedLut { 
+            get => _selectedLut; 
+            set { 
+                _selectedLut = value; 
+                _lutR = _lutG = _lutB = null; 
+                OnPropertyChanged(); 
+                Update(); 
+            } 
+        }
+
+        private double _lutStrength = 1.0;
+        public double LutStrength { get => _lutStrength; set { _lutStrength = value; OnPropertyChanged(); Update(); } }
+
+        public MonoMode MonoMode { get => Red.MonoMode; set { Red.MonoMode = Green.MonoMode = Blue.MonoMode = value; OnPropertyChanged(); Update(); } }
+        public double MonoStrength { get => Red.MonoStrength; set { Red.MonoStrength = Green.MonoStrength = Blue.MonoStrength = value; OnPropertyChanged(); Update(); } }
         
         // Removed Exp/Sol/Post
         
         public Color ShadowTint { get; set; } = Color.Black;
         public Color HighlightTint { get; set; } = Color.White;
 
-        public double Dithering { get => _dithering; set { _dithering = value; OnPropertyChanged(); Update(); } }
+        public double Dithering { get => Red.Dithering; set { Red.Dithering = Green.Dithering = Blue.Dithering = value; OnPropertyChanged(); Update(); } }
         public double Sharpness { get => _sharpness; set { _sharpness = value; OnPropertyChanged(); Update(); } }
-        public double ToneSculpt { get => _bump; set { _bump = value; OnPropertyChanged(); Update(); } }
+        public double ToneSculpt { get => Red.ToneSculpt; set { Red.ToneSculpt = Green.ToneSculpt = Blue.ToneSculpt = value; OnPropertyChanged(); Update(); } }
         public TransferMode TransferMode { get => _transferMode; set { _transferMode = value; OnPropertyChanged(); Update(); } }
 
         public GammaService() { Reset(); }
@@ -98,16 +118,12 @@ namespace GamerGamma
             Blue = new ChannelData();
             _saturation = 1.0;
             _hue = 0.0;
-            _luminance = 0.0;
-            _smartContrast = 0.0;
-            _deHaze = 0.0;
             _temperature = 0.0;
             _tint = 0.0;
-            _dithering = 0.0;
-            _bump = 0.0;
             _transferMode = TransferMode.PowerLaw;
             ShadowTint = Color.FromArgb(0, 0, 0);
             HighlightTint = Color.FromArgb(255, 255, 255);
+            _selectedLut = "";
             PointCurveR = new List<System.Drawing.Point>(); PointCurveR.Add(new System.Drawing.Point(0,1)); PointCurveR.Add(new System.Drawing.Point(255,255));
             PointCurveG = new List<System.Drawing.Point>(); PointCurveG.Add(new System.Drawing.Point(0,1)); PointCurveG.Add(new System.Drawing.Point(255,255));
             PointCurveB = new List<System.Drawing.Point>(); PointCurveB.Add(new System.Drawing.Point(0,1)); PointCurveB.Add(new System.Drawing.Point(255,255));
@@ -174,8 +190,15 @@ namespace GamerGamma
             ApplyPointCurve(bRaw, PointCurveMaster);
 
             // Global Color Matrix / Saturation / Hue / Tint logic
+            // Global Color Matrix / Saturation / Hue / Tint logic
             if (Math.Abs(_saturation - 1.0) > 0.001 || Math.Abs(_hue) > 0.001 || Math.Abs(_temperature) > 0.001 || 
-                Math.Abs(_tint) > 0.001 || ShadowTint.ToArgb() != Color.Black.ToArgb() || HighlightTint.ToArgb() != Color.White.ToArgb())
+                Math.Abs(_tint) > 0.001 || ShadowTint.ToArgb() != Color.Black.ToArgb() || HighlightTint.ToArgb() != Color.White.ToArgb() ||
+                Red.Inversion > 0.001 || Green.Inversion > 0.001 || Blue.Inversion > 0.001 ||
+                Red.Clipping > 0.001 || Green.Clipping > 0.001 || Blue.Clipping > 0.001 ||
+                Red.Clipping < -0.001 || Green.Clipping < -0.001 || Blue.Clipping < -0.001 ||
+                Red.MonoStrength > 0.001 || MonoMode != MonoMode.None ||
+                Red.Solarization > 0.001 || Green.Solarization > 0.001 || Blue.Solarization > 0.001 ||
+                !string.IsNullOrEmpty(_selectedLut))
             {
                 var rFull = new ushort[256];
                 var gFull = new ushort[256];
@@ -219,6 +242,54 @@ namespace GamerGamma
                     r *= rGain;
                     g *= gGain;
                     b *= bGain;
+
+                    // 2. Monotonic Mode
+                    if (Red.MonoMode != MonoMode.None && Red.MonoStrength > 0.001) {
+                        double s = Red.MonoStrength;
+                        double lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                        switch(Red.MonoMode) {
+                            case MonoMode.Red: g *= (1.0-s); b *= (1.0-s); break;
+                            case MonoMode.Green: r *= (1.0-s); b *= (1.0-s); break;
+                            case MonoMode.Blue: r *= (1.0-s); g *= (1.0-s); break;
+                            case MonoMode.Amber: r *= 1.0; g *= (1.0-s*0.2); b *= (1.0-s); break;
+                            case MonoMode.Cyan: r *= (1.0-s); break;
+                            case MonoMode.Magenta: g *= (1.0-s); break;
+                            case MonoMode.Yellow: b *= (1.0-s); break;
+                        }
+                    }
+
+                    // 1D LUT (Experimental)
+                    if (!string.IsNullOrEmpty(_selectedLut)) {
+                         ApplyLutToPixel(ref r, ref g, ref b);
+                    }
+
+                    // 3. Inversion (Per-Channel)
+                    if (Red.Inversion > 0.001) r = r * (1.0 - Red.Inversion) + (1.0 - r) * Red.Inversion;
+                    if (Green.Inversion > 0.001) g = g * (1.0 - Green.Inversion) + (1.0 - g) * Green.Inversion;
+                    if (Blue.Inversion > 0.001) b = b * (1.0 - Blue.Inversion) + (1.0 - b) * Blue.Inversion;
+
+                    // 4. Clipping (Threshold - Per-Channel)
+                    // Mapping: x=0.5 is max positive clipping, -0.5 is max negative.
+                    void ApplyClip(ref double val, double clip) {
+                        if (Math.Abs(clip) < 0.001) return;
+                        if (clip > 0) {
+                            // Positive: Push towards extremes (Spread)
+                            val = (val > 0.5) ? Math.Min(1, val + clip) : Math.Max(0, val - clip);
+                        } else {
+                            // Negative: Pull towards center (Deadzone / Reverse Spread)
+                            double c = Math.Abs(clip);
+                            if (val > 0.5) val = Math.Max(0.5, val - c);
+                            else val = Math.Min(0.5, val + c);
+                        }
+                    }
+                    ApplyClip(ref r, Red.Clipping);
+                    ApplyClip(ref g, Green.Clipping);
+                    ApplyClip(ref b, Blue.Clipping);
+
+                    // 5. Solarization (Post-process - Per-Channel)
+                    if (Red.Solarization > 0.001) r = r * (1.0 - Red.Solarization) + (1.0 - Math.Abs(2.0 * r - 1.0)) * Red.Solarization;
+                    if (Green.Solarization > 0.001) g = g * (1.0 - Green.Solarization) + (1.0 - Math.Abs(2.0 * g - 1.0)) * Green.Solarization;
+                    if (Blue.Solarization > 0.001) b = b * (1.0 - Blue.Solarization) + (1.0 - Math.Abs(2.0 * b - 1.0)) * Blue.Solarization;
                     
                     // Split Toning
                     // Apply Shadow Tint to darks, Highlight Tint to brights
@@ -231,11 +302,8 @@ namespace GamerGamma
                              double sR = ShadowTint.R / 255.0;
                              double sG = ShadowTint.G / 255.0;
                              double sB = ShadowTint.B / 255.0;
-                             double shadowFactor = (1.0 - lum) * (1.0 - lum); // Focus on darks
+                             double shadowFactor = (1.0 - lum) * (1.0 - lum); 
                              
-                             r = r * (1.0 - shadowFactor) + sR * shadowFactor * r; // Tinting method? Or addition?
-                             // Typically split toning adds color to shadows
-                             // Let's try simple addition with decay
                              r += sR * shadowFactor * 0.2; 
                              g += sG * shadowFactor * 0.2;
                              b += sB * shadowFactor * 0.2;
@@ -246,8 +314,6 @@ namespace GamerGamma
                              double hR = HighlightTint.R / 255.0;
                              double hG = HighlightTint.G / 255.0;
                              double hB = HighlightTint.B / 255.0;
-                             // We want to TINT towards the color, not just add it (which clips white)
-                             // So we interpolate towards the target color at high luminance?
                              double highFactor = lum * lum;
                              
                              r = r * (1.0 - highFactor * 0.3) + hR * highFactor * 0.3;
@@ -285,8 +351,8 @@ namespace GamerGamma
             {
                 double val = i / 255.0;
 
-                // 1. Black Level
-                val = ch.BlackLevel + val * (1.0 - ch.BlackLevel);
+                // 1. Black Level / White Level (Dynamic Range)
+                val = ch.BlackLevel + val * (ch.WhiteLevel - ch.BlackLevel);
 
                 // 2. Black Stabilizer (Lift Shadows - LG Style)
                 if (Math.Abs(ch.BlackStab) > 0.001)
@@ -303,9 +369,7 @@ namespace GamerGamma
                     }
                 }
 
-                // 3. Contrast (Pivot 0.5)
-                double cMult = ch.Contrast; // 1.0 is neutral
-                val = 0.5 + (val - 0.5) * cMult;
+                // 3. Contrast - MOVED to after Transfer Function (see below)
                 
                 // 4. Black Floor (Hard cut)
                 if (Math.Abs(ch.BlackFloor) > 0.001)
@@ -392,6 +456,10 @@ namespace GamerGamma
                     val = Math.Pow(val, 1.0 / g);
                 }
 
+                // 6.5. Contrast (Pivot 0.5) - MOVED HERE to work after Transfer Function
+                double cMult = ch.Contrast; // 1.0 is neutral
+                val = 0.5 + (val - 0.5) * cMult;
+
                 // 7. Mid-Gamma (0.0 is neutral, effective 1.0)
                 if (Math.Abs(ch.MidGamma) > 0.01)
                 {
@@ -404,64 +472,67 @@ namespace GamerGamma
                 double bOffset = ch.Brightness - 1.0; 
                 val += bOffset;
 
-                // 9. Dithering (Global)
-                if (_dithering > 0)
+                // 9. Dithering (Channel Specific)
+                if (ch.Dithering > 0)
                 {
-                    val += (rand.NextDouble() - 0.5) * (_dithering * 0.15); 
+                    val += (rand.NextDouble() - 0.5) * (ch.Dithering * 0.15); 
                 }
 
-                // 2.0 De-Haze (S-Curve)
-                // Sigmoid: 1 / (1 + exp(-k * (x - 0.5)))
-                if (Math.Abs(_deHaze) > 0.001)
+                // 3.0 Luminance (Gain - Channel Specific)
+                if (Math.Abs(ch.Luminance) > 0.001)
+                {
+                     // Simple multiplier, clipped
+                     val *= (1.0 + ch.Luminance);
+                }
+
+                // 2.0 De-Haze (S-Curve) - MOVED AFTER Smart Contrast
+                // ... logic below ...
+
+                // 4.0 Smart Contrast (Composite - Channel Specific)
+                // "combine mid-gamma and De-Haze and black stabilizer"
+                if (Math.Abs(ch.SmartContrast) > 0.001)
+                {
+                    double h = ch.SmartContrast; // -1 to 1
+                    if (ch.SmartContrast > 0)
+                    {
+                        // Positive: Lift shadows, boost mid-tones, increase contrast
+                        // 1. Black Stab Effect (Lift Shadows)
+                        val = Math.Pow(val, 1.0 - (h * 0.3)); 
+                        // 2. Mid-Tone Boost (Gamma)
+                        val = Math.Pow(val, 1.0 / (1.0 + h * 0.4));
+                        // 3. Constant S-Curve (De-Haze like)
+                        val = 0.5 + (val - 0.5) * (1.0 + h * 0.3);
+                    }
+                    else
+                    {
+                        // Negative: Opposite effects (crush shadows, reduce mid-tones, decrease contrast)
+                        double absH = Math.Abs(h);
+                        // 1. Crush Shadows (opposite of lifting)
+                        val = Math.Pow(val, 1.0 + (absH * 0.3)); 
+                        // 2. Mid-Tone Reduction
+                        val = Math.Pow(val, 1.0 / Math.Max(0.1, 1.0 - absH * 0.4));
+                        // 3. Reduce Contrast (flatten)
+                        val = 0.5 + (val - 0.5) / (1.0 + absH * 0.3);
+                    }
+                }
+
+                // 2.0 De-Haze (S-Curve - Channel Specific)
+                if (Math.Abs(ch.DeHaze) > 0.001)
                 {
                     double x = val;
-                    if (_deHaze > 0)
+                    if (ch.DeHaze > 0)
                     {
-                        // S-Curve (Contrast Boost) -> Removes Fog
-                        // k usually around 10-20 for strong eq.
-                        double k = 5.0 * _deHaze; // _deHaze 0-10 now
-
-                        // Center at 0.5?
-                        // Simple S-curve approximation:
-                        // val = 0.5 + (val - 0.5) * (1.0 + _deHaze); // Linear contrast
-                        // Sigmoidal:
-                        // We want 0->0, 1->1.
-                        // reuse Contrast function but applied as "DeHaze"
-                        double sVal = (1.0 / (1.0 + Math.Exp(-k * (x - 0.5)))) - 0.5; // range approx -0.5 to 0.5
-                        // Scale back to 0-1
-                        // Need to normalize based on k
+                        double k = 5.0 * ch.DeHaze;
+                        double sVal = (1.0 / (1.0 + Math.Exp(-k * (x - 0.5)))) - 0.5;
                         double min = (1.0 / (1.0 + Math.Exp(-k * (-0.5)))) - 0.5;
                         double max = (1.0 / (1.0 + Math.Exp(-k * (0.5)))) - 0.5;
                         val = (sVal - min) / (max - min);
                     }
                     else
                     {
-                        // Negative DeDehaze (Fog)
-                        // Use a division formula that decays to gray but never inverts
-                        // val = 0.5 + (val - 0.5) / (1.0 + amount)
-                        double amount = Math.Abs(_deHaze);
+                        double amount = Math.Abs(ch.DeHaze);
                         val = 0.5 + (val - 0.5) / (1.0 + amount); 
                     }
-                }
-
-                // 3.0 Luminance (Gain)
-                if (Math.Abs(_luminance) > 0.001)
-                {
-                     // Simple multiplier, clipped
-                     val *= (1.0 + _luminance);
-                }
-
-                // 4.0 Smart Contrast (Composite)
-                // "combine mid-gamma and De-Haze and black stabilizer"
-                if (_smartContrast > 0.001)
-                {
-                    double h = _smartContrast; // 0-1
-                    // 1. Black Stab Effect (Lift Shadows)
-                    val = Math.Pow(val, 1.0 - (h * 0.3)); 
-                    // 2. Mid-Tone Boost (Gamma)
-                    val = Math.Pow(val, 1.0 / (1.0 + h * 0.4));
-                    // 3. Constant S-Curve (De-Haze like)
-                    val = 0.5 + (val - 0.5) * (1.0 + h * 0.3);
                 }
 
                 // 5.0 Exposure (Removed)
@@ -470,25 +541,25 @@ namespace GamerGamma
                 
                 // 7.0 Posterization (Removed)
                 
-                // 8.0 Tone Sculpt (Ex-Bump) (Inverse S-Curve / Sine Offset)
-                if (Math.Abs(_bump) > 0.001)
+                // 8.0 Tone Sculpt (Sine Offset - Channel Specific)
+                if (Math.Abs(ch.ToneSculpt) > 0.001)
                 {
-                    // _bump range is now -4.0 to 4.0.
+                    // _toneSculpt range is now -4.0 to 4.0.
                     double w = Math.Pow(Math.Abs(2.0 * val - 1.0), 2.0);
-                    double offset = Math.Sin(val * Math.PI * 2.0) * (_bump * 0.08) * w; 
+                    double offset = Math.Sin(val * Math.PI * 2.0) * (ch.ToneSculpt * 0.08) * w; 
                     val += offset;
                 }
 
                 // FIXED: Changed Math.Clamp to Clamp
                 val = Clamp(val, 0.0, 1.0);
 
-                // DITHERING (Global Strength, Local Random)
-                if (_dithering > 0)
+                // DITHERING (Channel Strength, Local Random)
+                if (ch.Dithering > 0)
                 {
                     // Use a unique seed per pixel/channel index effectively?
                     // Or just unique Random instances per channel at least!
                     // See BuildChannelRamp creation of 'rand'.
-                    double noise = (rand.NextDouble() - 0.5) * (_dithering * 0.1); // Reduced multiplier
+                    double noise = (rand.NextDouble() - 0.5) * (ch.Dithering * 0.1); // Reduced multiplier
                     val += noise;
                 }
                 
@@ -547,12 +618,17 @@ namespace GamerGamma
                 Blue = Blue.Clone(),
                 Saturation = _saturation,
                 Hue = _hue,
-                Luminance = _luminance,
-                SmartContrast = _smartContrast,
-                DeHaze = _deHaze,
+                Luminance = Luminance,
+                SmartContrast = SmartContrast,
+                DeHaze = DeHaze,
                 Temperature = _temperature,
                 Tint = _tint,
-                Bump = _bump, // Serialized as Bump still to match Common.cs
+                ToneSculpt = ToneSculpt,
+                WhiteLevel = WhiteLevel,
+                SelectedLut = _selectedLut,
+                LutStrength = _lutStrength,
+                MonoMode = MonoMode,
+                MonoStrength = MonoStrength,
                 // Removed Exp/Sol/Post
                 
                 ShadowTint = ShadowTint.ToArgb(),
@@ -566,7 +642,7 @@ namespace GamerGamma
 
                 Smooth = Smooth,
 
-                Dithering = _dithering,
+                Dithering = Dithering,
                 Sharpness = _sharpness,
                 TransferMode = _transferMode,
                 Api = _api
@@ -582,20 +658,31 @@ namespace GamerGamma
             
             _transferMode = s.TransferMode; // Load mode
 
-            Saturation = s.Saturation;
-            Hue = s.Hue;
-            Luminance = s.Luminance;
-            SmartContrast = s.SmartContrast;
-            DeHaze = s.DeHaze;
-            Temperature = s.Temperature;
-            Tint = s.Tint;
-            ToneSculpt = s.Bump; // Keep serialized name 'Bump' for compatibility or change it? 
-            // User complained about settings not loading/saving correctly before, 
-            // but if we change the property in ExtendedColorSettings we break old profiles.
-            // Let's keep 'Bump' in JSON for now or update Common to have 'ToneSculpt'.
-            // Actually user asked for a rename of the UI functionality mostly.
-            // I'll map `ToneSculpt` (API) <-> `s.Bump` (DTO).
+            _saturation = s.Saturation;
+            _hue = s.Hue;
+            _temperature = s.Temperature;
+            _tint = s.Tint;
             
+            // Legacy Migration: If the new per-channel fields are all zero but the global one isn't, 
+            // it's likely an old profile. Push the global value to all channels.
+            if (Red.Luminance == 0 && Green.Luminance == 0 && Blue.Luminance == 0 && s.Luminance != 0) Luminance = s.Luminance;
+            if (Red.SmartContrast == 0 && Green.SmartContrast == 0 && Blue.SmartContrast == 0 && s.SmartContrast != 0) SmartContrast = s.SmartContrast;
+            if (Red.DeHaze == 0 && Green.DeHaze == 0 && Blue.DeHaze == 0 && s.DeHaze != 0) DeHaze = s.DeHaze;
+            if (Red.ToneSculpt == 0 && Green.ToneSculpt == 0 && Blue.ToneSculpt == 0 && s.ToneSculpt != 0) ToneSculpt = s.ToneSculpt;
+            if (Red.Dithering == 0 && Green.Dithering == 0 && Blue.Dithering == 0 && s.Dithering != 0) Dithering = s.Dithering;
+            if (Red.WhiteLevel == 1.0 && Green.WhiteLevel == 1.0 && Blue.WhiteLevel == 1.0 && s.WhiteLevel != 1.0) WhiteLevel = s.WhiteLevel;
+            
+            _selectedLut = s.SelectedLut ?? "";
+            // Check if LUT exists, if not, set to None
+            if (!string.IsNullOrEmpty(_selectedLut)) {
+                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Luts", _selectedLut);
+                if (!System.IO.File.Exists(path)) _selectedLut = "";
+            }
+            _lutStrength = s.LutStrength;
+            
+            if (s.MonoMode != MonoMode.None) MonoMode = s.MonoMode;
+            if (Red.MonoStrength == 0 && Green.MonoStrength == 0 && Blue.MonoStrength == 0 && s.MonoStrength != 0) MonoStrength = s.MonoStrength;
+
             try { ShadowTint = Color.FromArgb(s.ShadowTint); } catch { ShadowTint = Color.Black; }
             try { HighlightTint = Color.FromArgb(s.HighlightTint); } catch { HighlightTint = Color.White; }
             
@@ -611,7 +698,6 @@ namespace GamerGamma
             if (s.CurvesMaster != null) PointCurveMaster = s.CurvesMaster.Select(p => new System.Drawing.Point(p.X, p.Y)).ToList();
             else PointCurveMaster = new List<System.Drawing.Point>();
 
-            Dithering = s.Dithering;
             Sharpness = s.Sharpness;
             Api = s.Api;
             Smooth = s.Smooth;
@@ -679,6 +765,121 @@ namespace GamerGamma
                 list.Add(new System.Drawing.Point((int)(L * 255.0), (int)(V * 255.0)));
             }
             return list;
+        }
+
+        private void ApplyLutToPixel(ref double r, ref double g, ref double b)
+        {
+            if (_lutR == null || _lutG == null || _lutB == null) LoadSelectedLut();
+            if (_lutR == null || _lutG == null || _lutB == null) return;
+
+            int ir = (int)Clamp(r * 255, 0, 255);
+            int ig = (int)Clamp(g * 255, 0, 255);
+            int ib = (int)Clamp(b * 255, 0, 255);
+
+            double lr = _lutR[ir];
+            double lg = _lutG[ig];
+            double lb = _lutB[ib];
+
+            double s = _lutStrength;
+            r = r * (1.0 - s) + lr * s;
+            g = g * (1.0 - s) + lg * s;
+            b = b * (1.0 - s) + lb * s;
+        }
+
+        private void LoadSelectedLut()
+        {
+            _lutR = _lutG = _lutB = null;
+            if (string.IsNullOrEmpty(_selectedLut)) return;
+
+            try
+            {
+                string path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LUTS", _selectedLut);
+                if (!System.IO.File.Exists(path)) return;
+
+                string ext = System.IO.Path.GetExtension(path).ToLower();
+                if (ext == ".png")
+                {
+                    LoadPngLut(path);
+                    return;
+                }
+
+                var lines = System.IO.File.ReadAllLines(path);
+                var rList = new List<double>();
+                var gList = new List<double>();
+                var bList = new List<double>();
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+                    var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 3)
+                    {
+                        if (double.TryParse(parts[0], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double rv) &&
+                            double.TryParse(parts[1], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double gv) &&
+                            double.TryParse(parts[2], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double bv))
+                        {
+                            rList.Add(rv);
+                            gList.Add(gv);
+                            bList.Add(bv);
+                        }
+                    }
+                }
+
+                if (rList.Count >= 2)
+                {
+                    _lutR = ResampleLut(rList);
+                    _lutG = ResampleLut(gList);
+                    _lutB = ResampleLut(bList);
+                }
+            }
+            catch { }
+        }
+
+        private double[] ResampleLut(List<double> src)
+        {
+            double[] res = new double[256];
+            for (int i = 0; i < 256; i++)
+            {
+                double pos = (src.Count - 1) * (i / 255.0);
+                int idx = (int)Math.Floor(pos);
+                double t = pos - idx;
+                if (idx >= src.Count - 1) res[i] = src[src.Count - 1];
+                else res[i] = src[idx] * (1.0 - t) + src[idx + 1] * t;
+            }
+            return res;
+        }
+
+        private void LoadPngLut(string path)
+        {
+            try
+            {
+                using (var bmp = new Bitmap(path))
+                {
+                    int w = bmp.Width;
+                    int h = bmp.Height;
+                    // Assume it's a 1D LUT: either 1xN or Nx1
+                    int steps = Math.Max(w, h);
+                    var rList = new List<double>();
+                    var gList = new List<double>();
+                    var bList = new List<double>();
+
+                    for (int i = 0; i < steps; i++)
+                    {
+                        Color c = (w > h) ? bmp.GetPixel(i, 0) : bmp.GetPixel(0, i);
+                        rList.Add(c.R / 255.0);
+                        gList.Add(c.G / 255.0);
+                        bList.Add(c.B / 255.0);
+                    }
+
+                    if (rList.Count >= 2)
+                    {
+                        _lutR = ResampleLut(rList);
+                        _lutG = ResampleLut(gList);
+                        _lutB = ResampleLut(bList);
+                    }
+                }
+            }
+            catch { }
         }
     }
 

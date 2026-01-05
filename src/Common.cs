@@ -9,6 +9,7 @@ namespace GamerGamma
     public enum ChannelMode { Linked, Red, Green, Blue }
     public enum GammaApi { GDI, VESA, NvAPI }
     public enum TransferMode { PowerLaw, BT709, BT2020 }
+    public enum MonoMode { None, Red, Green, Blue, Amber, Cyan, Magenta, Yellow }
 
     public class ChannelData
     {
@@ -21,6 +22,17 @@ namespace GamerGamma
         public double BlackStab { get; set; } = 0.0;
         public double WhiteStab { get; set; } = 0.0;
         public double MidGamma { get; set; } = 0.0;
+        public double Luminance { get; set; } = 0.0;
+        public double DeHaze { get; set; } = 0.0;
+        public double ToneSculpt { get; set; } = 0.0;
+        public double SmartContrast { get; set; } = 0.0;
+        public double Dithering { get; set; } = 0.0;
+        public double WhiteLevel { get; set; } = 1.0;
+        public double Solarization { get; set; } = 0.0;
+        public double Inversion { get; set; } = 0.0;
+        public double Clipping { get; set; } = 0.0;
+        public MonoMode MonoMode { get; set; } = MonoMode.None;
+        public double MonoStrength { get; set; } = 0.0;
 
         public ChannelData Clone()
         {
@@ -40,7 +52,12 @@ namespace GamerGamma
         public double DeHaze { get; set; }
         public double Temperature { get; set; }
         public double Tint { get; set; }
-        public double Bump { get; set; }
+        public double ToneSculpt { get; set; }
+        public double WhiteLevel { get; set; } = 1.0;
+        public string SelectedLut { get; set; }
+        public double LutStrength { get; set; } = 1.0;
+        public MonoMode MonoMode { get; set; }
+        public double MonoStrength { get; set; }
         public int ShadowTint { get; set; }
         public int HighlightTint { get; set; }
         public List<PointDef> CurvesR { get; set; }
@@ -56,6 +73,22 @@ namespace GamerGamma
         public double Sharpness { get; set; }
         public TransferMode TransferMode { get; set; }
         public GammaApi Api { get; set; }
+
+        public ExtendedColorSettings()
+        {
+            // Initialize with Identity Curves (0,0) -> (255,255) to match Reset() behavior logic
+            var defCurve = new List<PointDef> { new PointDef { X = 0, Y = 0 }, new PointDef { X = 255, Y = 255 } };
+            CurvesR = new List<PointDef>(defCurve);
+            CurvesG = new List<PointDef>(defCurve);
+            CurvesB = new List<PointDef>(defCurve);
+            CurvesMaster = new List<PointDef>(defCurve);
+            
+            // Default Tints (White = Normal)
+            // Color.White.ToArgb() is -1 (0xFFFFFFFF)
+            HighlightTint = -1;
+            // Color.Black.ToArgb() is -16777216 (0xFF000000)
+            ShadowTint = -16777216;
+        }
     }
 
     public class ColorProfile
@@ -73,6 +106,7 @@ namespace GamerGamma
         
         public bool MinimizeToTray { get; set; } = false;
         public bool StartMinimized { get; set; } = false;
+        public bool ShowTooltips { get; set; } = true;
         
         public string SelectedMonitorDeviceName { get; set; }
         public ExtendedColorSettings CurrentSettings { get; set; } = new ExtendedColorSettings();

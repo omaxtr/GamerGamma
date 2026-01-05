@@ -17,8 +17,11 @@ namespace GamerGamma
         private Button btnLink, btnRed, btnGreen, btnBlue;
         
         // Removed tbSat/nudSat. Added tbTemp/nudTemp etc.
-        private TrackBar tbGamma, tbBright, tbContrast, tbLum, tbBlackFloor, tbWhiteCeil, tbBlackStab, tbWhiteStab, tbMidGamma, tbHdr, tbDeHaze, tbTemp, tbTint, tbBlackLevel, tbHue, tbDither, tbBump;
-        private NumericUpDown nudGamma, nudBright, nudContrast, nudLum, nudBlackFloor, nudWhiteCeil, nudBlackStab, nudWhiteStab, nudMidGamma, nudHdr, nudDeHaze, nudTemp, nudTint, nudBlackLevel, nudHue, nudDither, nudBump;
+        private TrackBar tbGamma, tbBright, tbContrast, tbLum, tbBlackFloor, tbWhiteCeil, tbBlackStab, tbWhiteStab, tbMidGamma, tbHdr, tbDeHaze, tbTemp, tbTint, tbBlackLevel, tbHue, tbDither, tbToneSculpt, tbWhiteLevel, tbSolar, tbInversion, tbClipping, tbMonoStrength;
+        private NumericUpDown nudGamma, nudBright, nudContrast, nudLum, nudBlackFloor, nudWhiteCeil, nudBlackStab, nudWhiteStab, nudMidGamma, nudHdr, nudDeHaze, nudTemp, nudTint, nudBlackLevel, nudHue, nudDither, nudToneSculpt, nudWhiteLevel, nudSolar, nudInversion, nudClipping, nudMonoStrength;
+        private ComboBox cbMono, cbLuts;
+        private TrackBar tbLutStr;
+        private NumericUpDown nudLutStr;
 
         // Vertical RGB Gamma Sliders
         private TrackBar tbR, tbG, tbB;
@@ -31,25 +34,28 @@ namespace GamerGamma
         private NotifyIcon trayIcon;
         private CheckBox chkMinimizeToTray;
         private ComboBox cbMonitors, cbProfiles;
-        private Label lblMonitorInfo, lblChain;
+        private Label lblMonitorInfo;
         private Panel grpProf;
         private PictureBox previewBox;
         private AppSettings _appSettings;
         private string _settingsPath;
+        private Label lblChain;
         private CheckBox chkStartWithWin;
         private CheckBox chkStartMinimized;
+        private CheckBox chkTooltips;
+        private ToolTip _tip = new ToolTip { InitialDelay = 500, ReshowDelay = 100, AutoPopDelay = 10000 };
         private bool _ignoreEvents = false;
         private int boxW = 310;
         private int leftW = 190;
         private double _lastMasterGamma = 1.0;
+        private double _redOffset = 0.0, _greenOffset = 0.0, _blueOffset = 0.0;
 
         private CheckBox btnCurves;
         private PointCurveEditorForm _curveEditor;
 
-        public MainForm()
-        {
-            this.Text = "Gamer Gamma v1.3";
-            this.Size = new Size(1250, 660);
+        public MainForm() { try {
+            this.Text = "Gamer Gamma v1.4";
+            this.ClientSize = new Size(1240, 680);
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.BackColor = Color.FromArgb(28, 28, 28);
@@ -88,7 +94,7 @@ namespace GamerGamma
 
             // Quick Settings
             var grpQuick = CreateGroup("Quick Settings", leftW);
-            var pnlQuickGrid = new TableLayoutPanel { Width = leftW - 20, Height = 125, ColumnCount = 2, RowCount = 3 };
+            var pnlQuickGrid = new TableLayoutPanel { Width = leftW - 20, Height = 150, ColumnCount = 2, RowCount = 4 };
             pnlQuickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             pnlQuickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
@@ -101,19 +107,27 @@ namespace GamerGamma
             // Buttons renaming as requested
             var fBtn = new Font(FontFamily.GenericSansSerif, 7);
             
-            var btnExt709 = CreateCtxBtn("BT.709", ChannelMode.Linked, Color.Yellow); 
-            btnExt709.Click += (s,e) => { 
-                _gamma.Reset(); 
-                // Mode remains PowerLaw (Standard), we apply the curve visually
-                _gamma.PointCurveMaster = _gamma.GetOETFPoints(TransferMode.BT709);
-                if (_curveEditor != null && !_curveEditor.IsDisposed) _curveEditor.LoadPoints();
-                _gamma.Update(); 
-                UpdateUIValues(); 
+            // Row 0: omaxtr | FPS Gamer
+            var btnOmaxtr = CreateCtxBtn("omaxtr", ChannelMode.Linked, Color.FromArgb(255, 128, 0)); // Orange like coffee button
+            btnOmaxtr.Click += (s,e) => {
+                _gamma.Reset();
+                _gamma.TransferMode = TransferMode.BT2020;
+                _gamma.Red.BlackStab = _gamma.Green.BlackStab = _gamma.Blue.BlackStab = 0.404;
+                _gamma.Red.WhiteStab = _gamma.Green.WhiteStab = _gamma.Blue.WhiteStab = 1.032;
+                _gamma.Red.MidGamma = _gamma.Green.MidGamma = _gamma.Blue.MidGamma = 0.07;
+                _gamma.DeHaze = 0.1;
+                _gamma.ToneSculpt = 0.7;
+                UpdateUIValues();
+                _gamma.Update();
                 DrawPreview();
             };
-            btnExt709.Font = fBtn;
-            btnExt709.Width = (leftW - 20) / 2 - 4; 
-            pnlQuickGrid.Controls.Add(btnExt709, 0, 0);
+            btnOmaxtr.Font = fBtn;
+            btnOmaxtr.Width = (leftW - 20) / 2 - 4;
+            btnOmaxtr.BackColor = Color.FromArgb(255, 128, 0); // Orange
+            btnOmaxtr.ForeColor = Color.White;
+            btnOmaxtr.FlatAppearance.BorderSize = 1;
+            btnOmaxtr.FlatAppearance.BorderColor = Color.White;
+            pnlQuickGrid.Controls.Add(btnOmaxtr, 0, 0);
 
             var btnFps = CreateCtxBtn("FPS Gamer", ChannelMode.Linked, Color.HotPink);
             btnFps.Click += (s,e) => {
@@ -132,6 +146,7 @@ namespace GamerGamma
             btnFps.Width = (leftW - 20) / 2 - 4; 
             pnlQuickGrid.Controls.Add(btnFps, 1, 0);
 
+            // Row 1: De-Haze | BT.709
             pnlQuickGrid.Controls.Add(CreateQBtn("De-Haze", () => { 
                 _gamma.Reset(); 
                 _gamma.Red.Gamma = _gamma.Green.Gamma = _gamma.Blue.Gamma = 1.10;
@@ -139,15 +154,39 @@ namespace GamerGamma
                 _gamma.Red.MidGamma = _gamma.Green.MidGamma = _gamma.Blue.MidGamma = 0.14;
                 _gamma.DeHaze = 0.60; 
                 _gamma.Temperature = 0.0;
-                // Add any other specific settings? These match the request.
                 _gamma.Update(); 
             }, Color.FromArgb(70, 60, 100)), 0, 1);
-            pnlQuickGrid.Controls.Add(CreateQBtn("DEFAULT", () => _gamma.Reset(), Color.DarkGreen), 1, 1);
-            pnlQuickGrid.Controls.Add(CreateQBtn("WARM", ApplyWarmMode, Color.FromArgb(120, 70, 30)), 0, 2);
-            pnlQuickGrid.Controls.Add(CreateQBtn("COOL", ApplyCoolMode, Color.FromArgb(70, 100, 150)), 1, 2);
+            
+            var btnExt709 = CreateCtxBtn("BT.709", ChannelMode.Linked, Color.Yellow); 
+            btnExt709.Click += (s,e) => { 
+                _gamma.Reset(); 
+                // Mode remains PowerLaw (Standard), we apply the curve visually
+                _gamma.PointCurveMaster = _gamma.GetOETFPoints(TransferMode.BT709);
+                if (_curveEditor != null && !_curveEditor.IsDisposed) _curveEditor.LoadPoints();
+                _gamma.Update(); 
+                UpdateUIValues(); 
+                DrawPreview();
+            };
+            btnExt709.Font = fBtn;
+            btnExt709.Width = (leftW - 20) / 2 - 4; 
+            pnlQuickGrid.Controls.Add(btnExt709, 1, 1);
 
-            // Removed duplicate FPS Gamer button
+            // Row 2: WARM | COOL (reduced height)
+            var btnWarm = CreateQBtn("WARM", ApplyWarmMode, Color.FromArgb(120, 70, 30));
+            btnWarm.Height = 25;
+            pnlQuickGrid.Controls.Add(btnWarm, 0, 2);
+            
+            var btnCool = CreateQBtn("COOL", ApplyCoolMode, Color.FromArgb(70, 100, 150));
+            btnCool.Height = 25;
+            pnlQuickGrid.Controls.Add(btnCool, 1, 2);
 
+            // Row 3: DEFAULT (full width)
+            var btnDefault = CreateQBtn("DEFAULT", () => _gamma.Reset(), Color.DarkGreen);
+            btnDefault.Height = 25;
+            pnlQuickGrid.Controls.Add(btnDefault, 0, 3);
+            pnlQuickGrid.SetColumnSpan(btnDefault, 2); // Span 2 columns
+
+            pnlQuickGrid.Height = 130; // Compact height
             grpQuick.Controls.Add(pnlQuickGrid);
             pnlLeft.Controls.Add(grpQuick);
 
@@ -164,6 +203,8 @@ namespace GamerGamma
             chkMinimizeToTray.CheckedChanged += (s, e) => SaveSettings();
             chkStartMinimized = new CheckBox { Text = "Start Minimized", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 2, 0, 0) };
             chkStartMinimized.CheckedChanged += (s, e) => SaveSettings();
+            chkTooltips = new CheckBox { Text = "Tooltips", ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+            chkTooltips.CheckedChanged += (s, e) => { _tip.Active = chkTooltips.Checked; SaveSettings(); };
 
             var btnExport = new Button { Text = "Export", Width = 75, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,50,80), Margin = new Padding(0,5,5,0) };
             var btnImport = new Button { Text = "Import", Width = 75, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(50,80,50), Margin = new Padding(0,5,0,0) };
@@ -172,6 +213,7 @@ namespace GamerGamma
             var pnlProfBtns = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0,5,0,0) };
             pnlProfBtns.Controls.AddRange(new[] { btnSave, btnDel, btnBind });
             grpProf.Controls.Add(pnlProfBtns);
+            grpProf.Controls.Add(chkTooltips);
             grpProf.Controls.Add(chkStartWithWin);
             grpProf.Controls.Add(chkMinimizeToTray);
             grpProf.Controls.Add(chkStartMinimized);
@@ -188,7 +230,7 @@ namespace GamerGamma
 
             // Relocated Footer Info (Into Left Panel bottom)
             var pnlIntegratedFooter = new FlowLayoutPanel { Width = leftW, Height = 120, FlowDirection = FlowDirection.TopDown, Margin = new Padding(0, 5, 0, 0) };
-            var lblFooter = new Label { Text = "© omaxtr 2026 // twitch.tv/omaxtr\nGamerGamma v1.3", Width = leftW, Height = 40, TextAlign = ContentAlignment.TopCenter, ForeColor = Color.Gray, Font = new Font("Consolas", 7) };
+            var lblFooter = new Label { Text = "© omaxtr 2026 // twitch.tv/omaxtr\nGamerGamma v1.4", Width = leftW, Height = 40, TextAlign = ContentAlignment.TopCenter, ForeColor = Color.Gray, Font = new Font("Consolas", 7) };
             var btnCoffee = new Button { 
                 Text = "☕ Buy me a Coffee", 
                 FlatStyle = FlatStyle.Flat, 
@@ -212,61 +254,114 @@ namespace GamerGamma
             btnExport.Click += BtnExport_Click;
             btnImport.Click += BtnImport_Click;
 
-            // Column 1
+                        // Column 1
             var pnlMid = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, WrapContents = false };
             root.Controls.Add(pnlMid, 1, 0);
 
-            var grpMaster = CreateGroup("Master Channels", boxW);
-            var pnlMasterSliders = new FlowLayoutPanel { Width = boxW - 20, Height = 210, FlowDirection = FlowDirection.LeftToRight };
-            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Master", 0.1, 4.0, 1.0, out tbGamma, out nudGamma, isMaster: true));
-            lblChain = new Label { Text = "🔗", AutoSize = true, Font = new Font(Font.FontFamily, 12), ForeColor = Color.Gray, Margin = new Padding(0, 80, 0, 0) };
+            // Channel Mode Buttons (Relocated above reset buttons)
+            btnLink = CreateCtxBtn("M", ChannelMode.Linked, Color.White);
+            btnRed = CreateCtxBtn("R", ChannelMode.Red, Color.Red);
+            btnGreen = CreateCtxBtn("G", ChannelMode.Green, Color.Lime);
+            btnBlue = CreateCtxBtn("B", ChannelMode.Blue, Color.Cyan);
+            foreach (Button b in new[] { btnLink, btnRed, btnGreen, btnBlue }) { b.Width = 20; b.Height = 20; b.Font = new Font(b.Font.FontFamily, 6, FontStyle.Bold); }
+
+            var grpPrimaries = CreateGroup("Primaries", boxW);
+            grpPrimaries.Height = 280;
+            grpPrimaries.AutoSize = false;
+            var pnlMasterSliders = new FlowLayoutPanel { Width = boxW - 20, Height = 225, WrapContents = false, AutoSize = true };
+            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Master", 0.1, 4.0, 1.0, out tbGamma, out nudGamma, isMaster: true, modeBtn: btnLink, helpText: "Controls the 'weight' of mid-tones; improves image depth."));
+            
+            lblChain = new Label { Text = _channelMode == ChannelMode.Linked ? "🔒" : "🔓", AutoSize = true, Font = new Font(Font.FontFamily, 12), ForeColor = Color.Yellow, Margin = new Padding(2, 60, 2, 0), Cursor = Cursors.Hand };
+            lblChain.Click += (s, e) => {
+                SetChannelMode(_channelMode == ChannelMode.Linked ? ChannelMode.Red : ChannelMode.Linked);
+            };
             pnlMasterSliders.Controls.Add(lblChain);
-            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Red", 0.1, 4.0, 1.0, out tbR, out nudR, "Red"));
-            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Green", 0.1, 4.0, 1.0, out tbG, out nudG, "Green"));
-            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Blue", 0.1, 4.0, 1.0, out tbB, out nudB, "Blue"));
-            grpMaster.Controls.Add(pnlMasterSliders);
 
-            // Channel Mode Buttons
-            var pnlModeBtns = new FlowLayoutPanel { Width = boxW - 20, Height = 35, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 10, 0, 0), WrapContents = false };
-            btnLink = CreateCtxBtn("Linked", ChannelMode.Linked, Color.White);
-            btnRed = CreateCtxBtn("Red", ChannelMode.Red, Color.Red);
-            btnGreen = CreateCtxBtn("Green", ChannelMode.Green, Color.Lime);
-            btnBlue = CreateCtxBtn("Blue", ChannelMode.Blue, Color.Cyan);
-            foreach (Button b in new[] { btnLink, btnRed, btnGreen, btnBlue }) { b.Width = (boxW - 40) / 4; b.Height = 25; b.Font = new Font(b.Font.FontFamily, 7, FontStyle.Bold); }
-            pnlModeBtns.Controls.AddRange(new[] { btnLink, btnRed, btnGreen, btnBlue });
-            grpMaster.Controls.Add(pnlModeBtns);
-            pnlMid.Controls.Add(grpMaster);
+            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Red", 0.1, 4.0, 1.0, out tbR, out nudR, "Red", modeBtn: btnRed, helpText: "Adjusts the weight of the red channel."));
+            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Green", 0.1, 4.0, 1.0, out tbG, out nudG, "Green", modeBtn: btnGreen, helpText: "Adjusts the weight of the green channel."));
+            pnlMasterSliders.Controls.Add(CreateVerticalSlider("Blue", 0.1, 4.0, 1.0, out tbB, out nudB, "Blue", modeBtn: btnBlue, helpText: "Adjusts the weight of the blue channel."));
+            grpPrimaries.Controls.Add(pnlMasterSliders);
+            pnlMid.Controls.Add(grpPrimaries);
 
-            var grpColorDim = CreateGroup("Color Dimension", boxW);
-            grpColorDim.Controls.Add(CreateSlider("Luminance", -1.0, 1.0, 0.0, out tbLum, out nudLum));
-            grpColorDim.Controls.Add(CreateSlider("Hue", 0.0, 359.0, 0.0, out tbHue, out nudHue)); // 0..359
-            grpColorDim.Controls.Add(CreateSlider("Temperature", -1.0, 1.0, 0.0, out tbTemp, out nudTemp)); 
-            grpColorDim.Controls.Add(CreateSlider("Tint", -1.0, 1.0, 0.0, out tbTint, out nudTint));
-            pnlMid.Controls.Add(grpColorDim);
+            var grpColorimetry = CreateGroup("Colorimetry", boxW);
+            grpColorimetry.Height = 450;
+            grpColorimetry.AutoSize = false;
+            grpColorimetry.Controls.Add(CreateSlider("Temperature", -1.0, 1.0, 0.0, out tbTemp, out nudTemp, helpText: "Makes the screen look warmer (orange) or cooler (blue).")); 
+            grpColorimetry.Controls.Add(CreateSlider("Tint", -1.0, 1.0, 0.0, out tbTint, out nudTint, helpText: "Adjusts the balance between magenta and green levels."));
+            grpColorimetry.Controls.Add(CreateSlider("Hue", 0.0, 359.0, 0.0, out tbHue, out nudHue, helpText: "Shifts all colors around the color wheel."));
+            
+            // Mono Mode (Moved from Advanced)
+            var pnlMono = new FlowLayoutPanel { Width = boxW - 20, Height = 75, FlowDirection = FlowDirection.LeftToRight };
+            pnlMono.Controls.Add(new Label { Text = "Mono Mode", AutoSize = true, ForeColor = Color.Gray, Margin = new Padding(0, 5, 10, 0) });
+            cbMono = new ComboBox { Width = 100, BackColor = Color.FromArgb(60,60,60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DropDownStyle = ComboBoxStyle.DropDownList };
+            cbMono.Items.AddRange(Enum.GetNames(typeof(MonoMode)));
+            cbMono.SelectedIndexChanged += (s,e) => {
+                _gamma.MonoMode = (MonoMode)Enum.Parse(typeof(MonoMode), cbMono.SelectedItem.ToString());
+                _gamma.Update(); DrawPreview(); SaveSettings();
+            };
+            pnlMono.Controls.Add(cbMono);
+            pnlMono.Controls.Add(CreateSlider("Strength", 0.0, 1.0, 0.0, out tbMonoStrength, out nudMonoStrength, helpText: "Controls the intensity of the single-color effect."));
+            grpColorimetry.Controls.Add(pnlMono);
+
+            // 1D LUTs
+            var pnlLut = new FlowLayoutPanel { Width = boxW - 20, Height = 100, FlowDirection = FlowDirection.LeftToRight };
+            cbLuts = new ComboBox { Width = 150, BackColor = Color.FromArgb(60,60,60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DropDownStyle = ComboBoxStyle.DropDownList };
+            cbLuts.Items.Add("None");
+            cbLuts.SelectedIndex = 0;
+            var btnAddLut = new Button { Text = "+", Width = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkGreen, ForeColor = Color.White };
+            btnAddLut.Click += (s,e) => ImportLut();
+            _tip.SetToolTip(btnAddLut, "Add your own LUTs (supports .png, .cube, .txt).");
+            var btnRemoveLut = new Button { Text = "-", Width = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkRed, ForeColor = Color.White };
+            btnRemoveLut.Click += (s,e) => RemoveSelectedLut();
+            _tip.SetToolTip(btnRemoveLut, "Remove the selected LUT from the application.");
+
+            pnlLut.Controls.Add(new Label { Text = "1D LUT", AutoSize = true, ForeColor = Color.Gray, Margin = new Padding(0, 5, 5, 0) });
+            pnlLut.Controls.Add(cbLuts);
+            pnlLut.Controls.Add(btnAddLut);
+            pnlLut.Controls.Add(btnRemoveLut);
+            
+            pnlLut.Controls.Add(CreateSlider("Intensity", 0.0, 0.6, 0.01, out tbLutStr, out nudLutStr, step: 0.01, helpText: "Blends the selected 1D LUT effect with the original image."));
+            cbLuts.SelectedIndexChanged += (s,e) => {
+                if (_ignoreEvents) return;
+                _gamma.SelectedLut = cbLuts.SelectedItem?.ToString() == "None" ? "" : cbLuts.SelectedItem?.ToString();
+                if (!string.IsNullOrEmpty(_gamma.SelectedLut)) { _ignoreEvents = true; nudLutStr.Value = 0.01M; _ignoreEvents = false; }
+                _gamma.Update(); DrawPreview(); SaveSettings();
+            };
+            grpColorimetry.Controls.Add(pnlLut);
+
+            pnlMid.Controls.Add(grpColorimetry);
 
             // Column 2
             var pnlRight = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, WrapContents = false };
             root.Controls.Add(pnlRight, 2, 0);
 
-            var grpLevels = CreateGroup("Levels", boxW);
-            grpLevels.Controls.Add(CreateSlider("Brightness", 0.0, 2.0, 1.0, out tbBright, out nudBright));
-            grpLevels.Controls.Add(CreateSlider("Contrast", 0.0, 2.0, 1.0, out tbContrast, out nudContrast)); 
-            grpLevels.Controls.Add(CreateSlider("Black Level", -1.0, 1.0, 0.0, out tbBlackLevel, out nudBlackLevel));
-            pnlRight.Controls.Add(grpLevels);
+            var grpDynRange = CreateGroup("Dynamic Range", boxW);
+            grpDynRange.Height = 305; // Shaved more as requested
+            grpDynRange.AutoSize = false;
+            grpDynRange.Controls.Add(CreateSlider("Luminance", -1.0, 1.0, 0.0, out tbLum, out nudLum, helpText: "Controls the overall light output of the screen."));
+            grpDynRange.Controls.Add(CreateSlider("Brightness", 0.0, 2.0, 1.0, out tbBright, out nudBright, helpText: "Adjusts the shadow detail level."));
+            grpDynRange.Controls.Add(CreateSlider("Contrast", 0.0, 2.0, 1.0, out tbContrast, out nudContrast, helpText: "Strengthens the difference between dark and light parts.")); 
+            grpDynRange.Controls.Add(CreateSlider("White Level", 0.0, 2.0, 1.0, out tbWhiteLevel, out nudWhiteLevel, helpText: "Sets the intensity of the brightest whites."));
+            // Force Black Level directly below White Level
+            grpDynRange.Controls.Add(CreateSlider("Black Level", -1.0, 1.0, 0.0, out tbBlackLevel, out nudBlackLevel, helpText: "Sets the intensity of the deepest blacks."));
+            pnlRight.Controls.Add(grpDynRange);
 
-            var grpStab = CreateGroup("Stabilizers", boxW);
-            grpStab.Controls.Add(CreateSlider("Black Stabilizer", -2.0, 2.0, 0.0, out tbBlackStab, out nudBlackStab)); 
-            grpStab.Controls.Add(CreateSlider("White Stabilizer", -2.0, 2.0, 0.0, out tbWhiteStab, out nudWhiteStab)); 
-            grpStab.Controls.Add(CreateSlider("Mid-Gamma", -1.0, 1.0, 0.0, out tbMidGamma, out nudMidGamma));
-            grpStab.Controls.Add(CreateSlider("Black Floor", -1.0, 1.0, 0.0, out tbBlackFloor, out nudBlackFloor));
-            grpStab.Controls.Add(CreateSlider("White Ceiling", -1.0, 1.0, 0.0, out tbWhiteCeil, out nudWhiteCeil));
-            pnlRight.Controls.Add(grpStab);
+            var grpToneMapping = CreateGroup("Tone Mapping", boxW);
+            grpToneMapping.Height = 420;
+            grpToneMapping.AutoSize = false;
+            grpToneMapping.Controls.Add(CreateSlider("Smart Contrast", -1.0, 1.0, 0.0, out tbHdr, out nudHdr, helpText: "Combines stabilizer and de-haze for a quick image boost."));
+            grpToneMapping.Controls.Add(CreateSlider("Mid-Gamma", -1.0, 1.0, 0.0, out tbMidGamma, out nudMidGamma, helpText: "Fine-tunes the brightness of the middle range."));
+            grpToneMapping.Controls.Add(CreateSlider("De-Haze", -4.0, 4.0, 0.0, out tbDeHaze, out nudDeHaze, helpText: "Removes the 'cloudy' look from the image."));
+            grpToneMapping.Controls.Add(CreateSlider("Black Stabilizer", -2.0, 2.0, 0.0, out tbBlackStab, out nudBlackStab, helpText: "Makes dark areas more visible without washing out.")); 
+            grpToneMapping.Controls.Add(CreateSlider("White Stabilizer", -2.0, 2.0, 0.0, out tbWhiteStab, out nudWhiteStab, helpText: "Protects highlights from becoming too bright.")); 
+            grpToneMapping.Controls.Add(CreateSlider("Tone Sculpt", -4.0, 4.0, 0.0, out tbToneSculpt, out nudToneSculpt, helpText: "Sculpts the image tones for more or less punch."));
+            pnlRight.Controls.Add(grpToneMapping);
 
             // Column 3: Preview
             var pnlCol3 = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, WrapContents = false };
             root.Controls.Add(pnlCol3, 3, 0);
 
-            var grpPreview = new Panel { Width = 350, Height = 400, BackColor = Color.FromArgb(45, 45, 48), Margin = new Padding(5), Padding = new Padding(10) };
+            var grpPreview = new Panel { Width = 350, Height = 440, BackColor = Color.FromArgb(45, 45, 48), Margin = new Padding(5), Padding = new Padding(10) };
             var lblPreviewTitle = new Label { Text = "PREVIEW", Dock = DockStyle.Top, Font = new Font(FontFamily.GenericSansSerif, 8, FontStyle.Bold), ForeColor = Color.Gray, Height = 25 };
             
             previewBox = new PictureBox { Dock = DockStyle.Fill, BackColor = Color.Black, SizeMode = PictureBoxSizeMode.StretchImage, Padding = new Padding(0) };
@@ -277,10 +372,8 @@ namespace GamerGamma
             grpPreview.Controls.Add(lblPreviewTitle);
             pnlCol3.Controls.Add(grpPreview);
 
-            // grpExtras REMOVED - Controls moved elsewhere
-            
             // COLOR PREVIEW (Relocated from Advanced)
-            var grpColPrev = new Panel { Width = 350, Height = 150, BackColor = Color.FromArgb(40,40,40), Margin = new Padding(5, 10, 5, 0) };
+            var grpColPrev = new Panel { Width = 350, Height = 190, BackColor = Color.FromArgb(40,40,40), Margin = new Padding(5, 5, 5, 0) };
             var lblCP = new Label { Text = "COLOR PREVIEW", Dock = DockStyle.Top, Font = new Font(FontFamily.GenericSansSerif, 8, FontStyle.Bold), ForeColor = Color.Gray, Height = 20 };
             var pbox = new PictureBox { Dock = DockStyle.Fill, BackColor = Color.Black };
             pbox.Paint += (s, e) => {
@@ -363,6 +456,8 @@ namespace GamerGamma
             chkMinimizeToTray.Checked = _appSettings.MinimizeToTray;
             chkStartWithWin.Checked = GetStartWithWindows();
             chkStartMinimized.Checked = _appSettings.StartMinimized;
+            chkTooltips.Checked = _appSettings.ShowTooltips;
+            _tip.Active = _appSettings.ShowTooltips;
 
             UpdateUIValues();
             DrawPreview();
@@ -378,7 +473,7 @@ namespace GamerGamma
                     trayIcon.Visible = true;
                 }
             }
-        }
+          } catch (Exception ex) { MessageBox.Show("Startup Error: " + ex.Message + "\n" + ex.StackTrace); Environment.Exit(1); } }
 
         private void SetStartWithWindows(bool start)
         {
@@ -429,15 +524,52 @@ namespace GamerGamma
             }
         }
 
-        private Panel CreateVerticalSlider(string label, double min, double max, double def, out TrackBar tb, out NumericUpDown nud, string channelName = null, bool isMaster = false)
+        private Panel CreateVerticalSlider(string label, double min, double max, double def, out TrackBar tb, out NumericUpDown nud, string channelName = null, bool isMaster = false, Button modeBtn = null, string helpText = null)
         {
-            var p = new Panel { Size = new Size(55, 200), Margin = new Padding(2) };
-            var l = new Label { Text = label, Dock = DockStyle.Bottom, Height = 15, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(Font.FontFamily, 7), ForeColor = Color.Gray };
-            var btnReset = new Button { Text = "↺", Size = new Size(20, 20), Dock = DockStyle.Bottom, FlatStyle = FlatStyle.Flat, ForeColor = Color.Red, BackColor = Color.FromArgb(40, 40, 40), Font = new Font(Font.FontFamily, 6) };
-            btnReset.FlatAppearance.BorderSize = 0;
+            var p = new Panel { Size = new Size(58, 215), Margin = new Padding(2) };
+            
+            void TrySelect() {
+                if (label == "Master") SetChannelMode(ChannelMode.Linked);
+                else {
+                    if (channelName == "Red") SetChannelMode(ChannelMode.Red);
+                    else if (channelName == "Green") SetChannelMode(ChannelMode.Green);
+                    else if (channelName == "Blue") SetChannelMode(ChannelMode.Blue);
+                }
+            }
+            p.Click += (s,e) => TrySelect(); 
+            p.MouseDown += (s,e) => TrySelect();
 
-            nud = new NumericUpDown { Minimum = (decimal)min, Maximum = (decimal)max, Value = (decimal)def, DecimalPlaces = 2, Increment = 0.01M, Dock = DockStyle.Top, Width = 45, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, Font = new Font(Font.FontFamily, 7) };
-            tb = new TrackBar { Orientation = Orientation.Vertical, Minimum = 0, Maximum = 1000, Value = (int)((def - min) / (max - min) * 1000), TickStyle = TickStyle.Both, TickFrequency = 250, Dock = DockStyle.Fill };
+            if (channelName == "Red") p.BackColor = Color.FromArgb(45, 30, 30);
+            else if (channelName == "Green") p.BackColor = Color.FromArgb(30, 45, 30);
+            else if (channelName == "Blue") p.BackColor = Color.FromArgb(30, 30, 45);
+            else if (isMaster) p.BackColor = Color.FromArgb(40, 40, 40);
+
+            var tlp = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = new Padding(0), Padding = new Padding(0) };
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // NUD
+            tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // TrackBar
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // Reset
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 22)); // ModeBtn
+            p.Controls.Add(tlp);
+            tlp.MouseDown += (s,e) => TrySelect();
+
+            nud = new NumericUpDown { Minimum = (decimal)min, Maximum = (decimal)max, Value = (decimal)def, DecimalPlaces = 2, Increment = 0.01M, Dock = DockStyle.Top, Width = 50, BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, Font = new Font(Font.FontFamily, 7), Margin = new Padding(4, 2, 4, 2) };
+            if (!string.IsNullOrEmpty(helpText)) _tip.SetToolTip(nud, helpText);
+            tlp.Controls.Add(nud, 0, 0);
+
+            tb = new TrackBar { Orientation = Orientation.Vertical, Minimum = 0, Maximum = 1000, Value = (int)((def - min) / (max - min) * 1000), TickStyle = TickStyle.Both, TickFrequency = 100, Dock = DockStyle.Fill, Margin = new Padding(0) };
+            if (!string.IsNullOrEmpty(helpText)) _tip.SetToolTip(tb, helpText);
+            tlp.Controls.Add(tb, 0, 1);
+
+            var btnResetBtn = new Button { Text = "↺", Size = new Size(35, 18), FlatStyle = FlatStyle.Flat, ForeColor = Color.Red, BackColor = Color.FromArgb(40, 40, 40), Font = new Font(Font.FontFamily, 6), Margin = new Padding(12, 2, 0, 2), Dock = DockStyle.None };
+            btnResetBtn.FlatAppearance.BorderSize = 0;
+            tlp.Controls.Add(btnResetBtn, 0, 2);
+
+            if (modeBtn != null) {
+                modeBtn.Dock = DockStyle.None;
+                modeBtn.Size = new Size(35, 18);
+                modeBtn.Margin = new Padding(12, 1, 0, 0);
+                tlp.Controls.Add(modeBtn, 0, 3);
+            }
 
             var cTb = tb; var cNud = nud;
             cTb.Scroll += (s, e) => {
@@ -451,38 +583,47 @@ namespace GamerGamma
                 if (!_ignoreEvents) {
                     if (isMaster) {
                         double newVal = (double)cNud.Value;
-                        double delta = newVal - _lastMasterGamma;
-                        if (_channelMode == ChannelMode.Linked) {
-                            _gamma.Red.Gamma += delta;
-                            _gamma.Green.Gamma += delta;
-                            _gamma.Blue.Gamma += delta;
-                        } else {
-                            if (_channelMode == ChannelMode.Red) _gamma.Red.Gamma = newVal;
-                            else if (_channelMode == ChannelMode.Green) _gamma.Green.Gamma = newVal;
-                            else if (_channelMode == ChannelMode.Blue) _gamma.Blue.Gamma = newVal;
-                        }
+                        _gamma.Red.Gamma = Clamp(newVal + _redOffset, min, max);
+                        _gamma.Green.Gamma = Clamp(newVal + _greenOffset, min, max);
+                        _gamma.Blue.Gamma = Clamp(newVal + _blueOffset, min, max);
                         _gamma.Update();
                         _lastMasterGamma = newVal;
                         UpdateUIValues();
                         DrawPreview();
                     }
-                    else if (channelName != null) ApplyChannelGamma(channelName, (double)cNud.Value);
+                    else if (channelName != null) {
+                        double v = (double)cNud.Value;
+                        if (channelName == "Red") { _gamma.Red.Gamma = v; _redOffset = v - _lastMasterGamma; }
+                        else if (channelName == "Green") { _gamma.Green.Gamma = v; _greenOffset = v - _lastMasterGamma; }
+                        else if (channelName == "Blue") { _gamma.Blue.Gamma = v; _blueOffset = v - _lastMasterGamma; }
+                        _gamma.Update();
+                        UpdateUIValues();
+                        DrawPreview();
+                    }
                 }
             };
-            btnReset.Click += (s, e) => cNud.Value = (decimal)def;
-            p.Controls.Add(tb); p.Controls.Add(nud); p.Controls.Add(btnReset); p.Controls.Add(l);
+            btnResetBtn.Click += (s, e) => { if (isMaster) { _redOffset=_greenOffset=_blueOffset=0; } cNud.Value = (decimal)def; };
+
+            p.Paint += (s, e) => {
+                if (!cNud.Enabled) {
+                     using (var brush = new SolidBrush(Color.FromArgb(160, 20, 20, 20))) {
+                         e.Graphics.FillRectangle(brush, p.ClientRectangle);
+                     }
+                }
+            };
+
             return p;
         }
 
-        private Panel CreateSlider(string label, double min, double max, double def, out TrackBar tb, out NumericUpDown nud, double step = 0.01)
+        private Panel CreateSlider(string label, double min, double max, double def, out TrackBar tb, out NumericUpDown nud, double step = 0.01, int width = -1, string helpText = null)
         {
-            int w = boxW - 20;
-            var p = new Panel { Size = new Size(w, 45), Margin = new Padding(0, 0, 0, 5) };
+            int w = (width > 0) ? width : boxW - 20;
+            var p = new Panel { Size = new Size(w, 48), Margin = new Padding(0, 0, 0, 5) };
             var l = new Label { Text = label, Location = new Point(0, 0), AutoSize = true, Font = new Font(Font.FontFamily, 7), ForeColor = Color.Gray };
-            var btnReset = new Button { Text = "↺", Size = new Size(22, 22), Location = new Point(w - 25, 18), FlatStyle = FlatStyle.Flat, ForeColor = Color.Red, BackColor = Color.FromArgb(40, 40, 40), Font = new Font(Font.FontFamily, 8) };
+            var btnReset = new Button { Text = "↺", Size = new Size(22, 22), Location = new Point(w - 23, 20), FlatStyle = FlatStyle.Flat, ForeColor = Color.Red, BackColor = Color.FromArgb(40, 40, 40), Font = new Font(Font.FontFamily, 8) };
             btnReset.FlatAppearance.BorderSize = 0;
-            nud = new NumericUpDown { Minimum = (decimal)min, Maximum = (decimal)max, Value = (decimal)def, DecimalPlaces = 2, Increment = (decimal)step, Width = 55, Location = new Point(w - 60, 0), BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, Font = new Font(Font.FontFamily, 7) };
-            tb = new TrackBar { Minimum = 0, Maximum = 1000, Value = (int)((def - min) / (max - min) * 1000), TickStyle = TickStyle.Both, TickFrequency = 250, Width = w - 65, Location = new Point(0, 15), Height = 25 };
+            nud = new NumericUpDown { Minimum = (decimal)min, Maximum = (decimal)max, Value = (decimal)def, DecimalPlaces = (step < 0.1 ? 2 : 1), Increment = (decimal)step, Width = 55, Location = new Point(w - 55, 0), BackColor = Color.FromArgb(60, 60, 60), ForeColor = Color.White, Font = new Font(Font.FontFamily, 7) };
+            tb = new TrackBar { Minimum = 0, Maximum = 1000, Value = (int)((def - min) / (max - min) * 1000), TickStyle = TickStyle.Both, TickFrequency = 100, Width = w - 60, Location = new Point(0, 18), Height = 25 };
             var ct = tb; var cn = nud;
             ct.Scroll += (s, e) => {
                 double v = min + (ct.Value / 1000.0) * (max - min);
@@ -493,6 +634,11 @@ namespace GamerGamma
                 if (!_ignoreEvents) ApplyValue(label, (double)cn.Value);
             };
             btnReset.Click += (s, e) => cn.Value = (decimal)def;
+            if (!string.IsNullOrEmpty(helpText)) {
+                _tip.SetToolTip(l, helpText);
+                _tip.SetToolTip(tb, helpText);
+                _tip.SetToolTip(nud, helpText);
+            }
             p.Controls.Add(l); p.Controls.Add(tb); p.Controls.Add(nud); p.Controls.Add(btnReset);
             return p;
         }
@@ -500,7 +646,16 @@ namespace GamerGamma
         private Panel CreateGroup(string title, int width = 200)
         {
             var p = new FlowLayoutPanel { 
-                FlowDirection = FlowDirection.TopDown, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Width = width, MinimumSize = new Size(width, 100), MaximumSize = new Size(width, 2000), BackColor = Color.FromArgb(45, 45, 48), Margin = new Padding(5), Padding = new Padding(10) 
+                FlowDirection = FlowDirection.TopDown, 
+                WrapContents = false,
+                AutoSize = true, 
+                AutoSizeMode = AutoSizeMode.GrowAndShrink, 
+                Width = width, 
+                MinimumSize = new Size(width, 100), 
+                MaximumSize = new Size(width, 2000), 
+                BackColor = Color.FromArgb(45, 45, 48), 
+                Margin = new Padding(5), 
+                Padding = new Padding(10) 
             };
             p.Controls.Add(new Label { Text = title.ToUpper(), Font = new Font(FontFamily.GenericSansSerif, 8, FontStyle.Bold), ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(0,0,0,10) });
             return p;
@@ -517,34 +672,52 @@ namespace GamerGamma
             if (_gamma == null) return;
             _ignoreEvents = true;
 
+            if (_channelMode == ChannelMode.Linked) {
+                _lastMasterGamma = _gamma.Red.Gamma;
+            }
+            if (nudGamma != null) SafeSetNud(nudGamma, _lastMasterGamma);
+
+            // Re-sync offsets to maintain "sticky" behavior accurately
+            _redOffset = _gamma.Red.Gamma - _lastMasterGamma;
+            _greenOffset = _gamma.Green.Gamma - _lastMasterGamma;
+            _blueOffset = _gamma.Blue.Gamma - _lastMasterGamma;
+
             var d = (_channelMode == ChannelMode.Red) ? _gamma.Red :
                        (_channelMode == ChannelMode.Green) ? _gamma.Green :
                        (_channelMode == ChannelMode.Blue) ? _gamma.Blue :
-                       _gamma.Red; 
+                       _gamma.Red;
 
-            SafeSetNud(nudGamma, d.Gamma); 
-            _lastMasterGamma = (double)nudGamma.Value;
-            
             SafeSetNud(nudBright, d.Brightness);
             SafeSetNud(nudContrast, d.Contrast);
-            SafeSetNud(nudLum, _gamma.Luminance);
+            SafeSetNud(nudLum, d.Luminance);
             
             SafeSetNud(nudBlackStab, d.BlackStab);
             SafeSetNud(nudWhiteStab, d.WhiteStab);
             SafeSetNud(nudMidGamma, d.MidGamma);
-            SafeSetNud(nudHdr, _gamma.SmartContrast);
+            SafeSetNud(nudHdr, d.SmartContrast);
             
             SafeSetNud(nudBlackFloor, d.BlackFloor);
             SafeSetNud(nudWhiteCeil, d.WhiteCeiling);
             
-            SafeSetNud(nudDeHaze, _gamma.DeHaze);
+            SafeSetNud(nudDeHaze, d.DeHaze);
             SafeSetNud(nudTemp, _gamma.Temperature);
             SafeSetNud(nudTint, _gamma.Tint);
             
             SafeSetNud(nudBlackLevel, d.BlackLevel);
+            SafeSetNud(nudWhiteLevel, d.WhiteLevel);
             SafeSetNud(nudHue, _gamma.Hue);
-            SafeSetNud(nudDither, _gamma.Dithering);
-            SafeSetNud(nudBump, _gamma.ToneSculpt);
+            SafeSetNud(nudDither, d.Dithering);
+            SafeSetNud(nudToneSculpt, d.ToneSculpt);
+            SafeSetNud(nudSolar, d.Solarization);
+            SafeSetNud(nudInversion, d.Inversion);
+            SafeSetNud(nudClipping, d.Clipping);
+            SafeSetNud(nudMonoStrength, d.MonoStrength);
+            
+            if (cbMono != null) cbMono.SelectedItem = _gamma.MonoMode.ToString();
+            RefreshLutList();
+            if (cbLuts != null) cbLuts.SelectedItem = string.IsNullOrEmpty(_gamma.SelectedLut) ? "None" : _gamma.SelectedLut;
+            SafeSetNud(nudLutStr, _gamma.LutStrength);
+            if (lblChain != null) lblChain.Text = _channelMode == ChannelMode.Linked ? "🔒" : "🔓";
             
             // Split Toning Sync
             if (btnShadow != null) {
@@ -560,11 +733,25 @@ namespace GamerGamma
                 SafeSetNud(nudR, _gamma.Red.Gamma);
                 SafeSetNud(nudG, _gamma.Green.Gamma);
                 SafeSetNud(nudB, _gamma.Blue.Gamma);
-                bool link = _channelMode == ChannelMode.Linked;
-                tbR.Enabled = nudR.Enabled = !link && (_channelMode == ChannelMode.Red);
-                tbG.Enabled = nudG.Enabled = !link && (_channelMode == ChannelMode.Green);
-                tbB.Enabled = nudB.Enabled = !link && (_channelMode == ChannelMode.Blue);
-                if (lblChain != null) lblChain.ForeColor = link ? Color.Cyan : Color.Gray;
+                
+                bool linked = (_channelMode == ChannelMode.Linked);
+                bool isR = (_channelMode == ChannelMode.Red);
+                bool isG = (_channelMode == ChannelMode.Green);
+                bool isB = (_channelMode == ChannelMode.Blue);
+
+                // Disable TrackBar/NUD but keep Parent Panel enabled for click-to-select logic
+                if (nudGamma != null) nudGamma.Enabled = tbGamma.Enabled = linked;
+                if (nudR != null) nudR.Enabled = tbR.Enabled = isR;
+                if (nudG != null) nudG.Enabled = tbG.Enabled = isG;
+                if (nudB != null) nudB.Enabled = tbB.Enabled = isB;
+
+                // Force repaint for grey overlay
+                if (tbGamma != null) tbGamma.Parent.Invalidate();
+                if (tbR != null) tbR.Parent.Invalidate();
+                if (tbG != null) tbG.Parent.Invalidate();
+                if (tbB != null) tbB.Parent.Invalidate();
+
+                if (lblChain != null) lblChain.ForeColor = linked ? Color.Cyan : Color.Gray;
             }
 
             void Sty(Button b, bool a) => b.BackColor = a ? Color.FromArgb(80,80,80) : Color.FromArgb(50,50,50);
@@ -573,8 +760,16 @@ namespace GamerGamma
             if(btnGreen != null) Sty(btnGreen, _channelMode == ChannelMode.Green);
             if(btnBlue != null) Sty(btnBlue, _channelMode == ChannelMode.Blue);
 
-            if (btnLink != null) btnLink.BackColor = (_channelMode == ChannelMode.Linked) ? Color.FromArgb(80, 80, 80) : Color.FromArgb(50, 50, 50);
-            if (lblChain != null) lblChain.Visible = (_channelMode == ChannelMode.Linked);
+            if (lblChain != null) {
+                lblChain.Text = (_channelMode == ChannelMode.Linked) ? "🔒" : "🔓";
+                lblChain.ForeColor = (_channelMode == ChannelMode.Linked) ? Color.Yellow : Color.Gray;
+            }
+
+            // Master Slider Lock
+            if (tbGamma != null) {
+                bool isLinked = _channelMode == ChannelMode.Linked;
+                tbGamma.BackColor = isLinked ? Color.FromArgb(28, 28, 28) : Color.FromArgb(40, 40, 40);
+            }
 
             _ignoreEvents = false;
         }
@@ -694,17 +889,24 @@ namespace GamerGamma
                        case "Black Floor": d.BlackFloor = v; break;
                        case "Black Stabilizer": d.BlackStab = v; break;
                        case "White Stabilizer": d.WhiteStab = v; break;
-                  }
+                       case "Luminance": d.Luminance = v; break;
+                       case "De-Haze": d.DeHaze = v; break;
+                       case "Tone Sculpt": d.ToneSculpt = v; break;
+                       case "Smart Contrast": d.SmartContrast = v; break;
+                       case "Dither": d.Dithering = v; break;
+                       case "White Level": d.WhiteLevel = v; break;
+                       case "Solarization": d.Solarization = v; break;
+                       case "Inversion": d.Inversion = v; break;
+                       case "Clipping": d.Clipping = v; break;
+                       case "Strength": d.MonoStrength = v; break; 
+                       case "Intensity": _gamma.LutStrength = v; break;
+                   }
              }
 
              if (label == "Hue") { _gamma.Hue = val; }
-             else if (label == "Luminance") { _gamma.Luminance = val; }
-             else if (label == "Smart Contrast") { _gamma.SmartContrast = val; } // Fixed label
-             else if (label == "De-Haze") { _gamma.DeHaze = val; }
              else if (label == "Temperature") { _gamma.Temperature = val; }
              else if (label == "Tint") { _gamma.Tint = val; }
-             else if (label == "Dither") { _gamma.Dithering = val; }
-             else if (label == "Tone Sculpt") { _gamma.ToneSculpt = val; } // Fixed property name
+             else if (label == "Intensity") { _gamma.LutStrength = val; } // Reverted to 1:1, Max 0.6
              else if (_channelMode == ChannelMode.Linked) {
                  double oldVal = GetChannelValue(_gamma.Red, label);
                  double diff = val - oldVal;
@@ -721,6 +923,63 @@ namespace GamerGamma
              SaveSettings();
         }
 
+        private void RefreshLutList()
+        {
+            if (cbLuts == null) return;
+            string selected = cbLuts.SelectedItem?.ToString();
+            cbLuts.Items.Clear();
+            cbLuts.Items.Add("None");
+
+            string lutDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LUTS");
+            if (!Directory.Exists(lutDir)) return;
+
+            foreach (var file in Directory.GetFiles(lutDir))
+            {
+                cbLuts.Items.Add(Path.GetFileName(file));
+            }
+
+            if (!string.IsNullOrEmpty(selected) && cbLuts.Items.Contains(selected))
+                cbLuts.SelectedItem = selected;
+            else if (!string.IsNullOrEmpty(_gamma.SelectedLut) && cbLuts.Items.Contains(_gamma.SelectedLut))
+                cbLuts.SelectedItem = _gamma.SelectedLut;
+            else if (cbLuts.Items.Count > 0)
+                cbLuts.SelectedIndex = 0;
+        }
+
+        private void RemoveSelectedLut()
+        {
+            if (cbLuts.SelectedItem == null || cbLuts.SelectedItem.ToString() == "None") return;
+            string name = cbLuts.SelectedItem.ToString();
+            if (MessageBox.Show($"Delete LUT file: {name}?", "Del", MessageBoxButtons.YesNo) == DialogResult.Yes) {
+                try {
+                    string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Luts", name);
+                    if (File.Exists(path)) File.Delete(path);
+                    RefreshLutList();
+                    cbLuts.SelectedIndex = 0;
+                } catch (Exception ex) { MessageBox.Show("Failed to delete: " + ex.Message); }
+            }
+        }
+
+        private void ImportLut()
+        {
+            using (var ofd = new OpenFileDialog { Filter = "LUT files|*.cube;*.txt;*.lut|All files|*.*" })
+            {
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        string lutDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "LUTS");
+                        if (!Directory.Exists(lutDir)) Directory.CreateDirectory(lutDir);
+                        string dest = Path.Combine(lutDir, Path.GetFileName(ofd.FileName));
+                        File.Copy(ofd.FileName, dest, true);
+                        RefreshLutList();
+                        cbLuts.SelectedItem = Path.GetFileName(ofd.FileName);
+                    }
+                    catch (Exception ex) { MessageBox.Show("Failed to import LUT: " + ex.Message); }
+                }
+            }
+        }
+
         private double GetChannelValue(ChannelData d, string label) {
              switch(label) {
                   case "Gamma": return d.Gamma;
@@ -732,7 +991,18 @@ namespace GamerGamma
                    case "Black Floor": return d.BlackFloor;
                    case "Black Stabilizer": return d.BlackStab;
                    case "White Stabilizer": return d.WhiteStab;
-              }
+                   case "Luminance": return d.Luminance;
+                   case "De-Haze": return d.DeHaze;
+                   case "Tone Sculpt": return d.ToneSculpt;
+                   case "Smart Contrast": return d.SmartContrast;
+                   case "Dither": return d.Dithering;
+                   case "White Level": return d.WhiteLevel;
+                   case "Solarization": return d.Solarization;
+                   case "Inversion": return d.Inversion;
+                   case "Clipping": return d.Clipping;
+                    case "Strength": return d.MonoStrength;
+                    case "Intensity": return _gamma.LutStrength;
+               }
              return 0;
         }
 
@@ -784,7 +1054,7 @@ namespace GamerGamma
                 if (string.IsNullOrWhiteSpace(m.DeviceString) || m.DeviceString.Contains("Generic")) m.DeviceString = $"Monitor {i++}";
                 cbMonitors.Items.Add(m);
             }
-            if(cbMonitors.Items.Count > 0) cbMonitors.SelectedIndex = 0;
+            // Removed premature selection to allow constructor logic to trigger the event.
             cbMonitors.SelectedIndexChanged += (s,e) => {
                  if(cbMonitors.SelectedItem is MonitorInfo mi) { 
                      if (!string.IsNullOrEmpty(_gamma.TargetDisplay) && !_ignoreEvents) {
@@ -875,6 +1145,7 @@ namespace GamerGamma
             _appSettings.CurrentSettings = _gamma.GetCurrentSettings();
             _appSettings.MinimizeToTray = chkMinimizeToTray.Checked;
             _appSettings.StartMinimized = chkStartMinimized.Checked;
+            _appSettings.ShowTooltips = chkTooltips.Checked;
             _appSettings.SelectedProfileIndex = cbProfiles.SelectedIndex;
             
             if (!string.IsNullOrEmpty(_gamma.TargetDisplay)) {
@@ -920,27 +1191,24 @@ namespace GamerGamma
 
         private void ToggleProView()
         {
-            if (this.Width < 1500) {
-                this.Width = 1620;
+            if (this.ClientSize.Width < 1400) {
+                this.ClientSize = new Size(1570, 680);
                 if (_proPanel == null) {
                      InitProPanel();
                 } else {
                      _proPanel.Visible = true;
-                     // Restore column width
                      var root = Controls[0] as TableLayoutPanel;
                      if(root != null && root.ColumnStyles.Count > 1) {
-                         root.ColumnStyles[root.ColumnStyles.Count-1].Width = 350;
+                          root.ColumnStyles[root.ColumnStyles.Count-1].Width = 330;
                      }
                 }
             } else {
-                this.Width = 1250;
-                this.Height = 660;
+                this.ClientSize = new Size(1240, 680);
                 if (_proPanel != null) {
                      _proPanel.Visible = false;
-                     // Collapse column width to 0 to prevent "blank part" overlay
                      var root = Controls[0] as TableLayoutPanel;
                      if(root != null && root.ColumnStyles.Count > 1) {
-                         root.ColumnStyles[root.ColumnStyles.Count-1].Width = 0; // Hide column
+                          root.ColumnStyles[root.ColumnStyles.Count-1].Width = 0;
                      }
                 }
             }
@@ -956,95 +1224,79 @@ namespace GamerGamma
 
                  // Expand column
                  root.ColumnCount++;
-                 root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350));
+                  root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 330));
                  
-                  var pnlPro = new FlowLayoutPanel { Name="ProPanel", FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, BackColor = Color.FromArgb(35, 30, 30), Padding = new Padding(10), AutoScroll = false };
+                  var pnlPro = new FlowLayoutPanel { Name="ProPanel", FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, BackColor = Color.FromArgb(35, 30, 30), Padding = new Padding(10), AutoScroll = false, WrapContents = false };
                   _proPanel = pnlPro;
                   
                   pnlPro.Controls.Add(new Label { Text = "ADVANCED", Font = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold), ForeColor = Color.Red, AutoSize = true, Margin = new Padding(0,0,0,10) });
 
-                 // EXTENDED CONTROLS
-                 var grpNice = CreateGroup("Extended Controls", 330);
-                 
-                 // Dither
-                  grpNice.Controls.Add(CreateSlider("Dither", 0.0, 5.0, 0.0, out tbDither, out nudDither)); 
-                  tbDither.Scroll += (s,e) => ApplyValue("Dither", (double)nudDither.Value);
-                  nudDither.ValueChanged += (s,e) => ApplyValue("Dither", (double)nudDither.Value);
+                  // SIGNAL ENGINEERING
+                  var grpSignal = CreateGroup("Signal Engineering", 310);
+                  grpSignal.Height = 355; // Increased to fit all sliders comfortably
+                  grpSignal.AutoSize = false;
+                  grpSignal.Controls.Add(CreateSlider("Black Floor", -1.0, 1.0, 0.0, out tbBlackFloor, out nudBlackFloor, width: 290, helpText: "Sets the minimum brightness level (crushes blacks)."));
+                  grpSignal.Controls.Add(CreateSlider("White Ceiling", -1.0, 1.0, 0.0, out tbWhiteCeil, out nudWhiteCeil, width: 290, helpText: "Sets the maximum brightness level (clips whites)."));
+                  grpSignal.Controls.Add(CreateSlider("Dither", 0.0, 5.0, 0.0, out tbDither, out nudDither, width: 290, helpText: "Adds subtle noise to prevent brightness banding.")); 
                   
-                  // De-Haze (Moved from main columns)
-                  grpNice.Controls.Add(CreateSlider("De-Haze", -10.0, 10.0, 0.0, out tbDeHaze, out nudDeHaze));
-                  tbDeHaze.Scroll += (s,e) => ApplyValue("De-Haze", (double)nudDeHaze.Value);
-                  nudDeHaze.ValueChanged += (s,e) => ApplyValue("De-Haze", (double)nudDeHaze.Value);
-                 
-                 // Smart Contrast (was HDR Toning)
-                 // REMOVED DUPLICATE HERE
-                 
-                 // Tone Sculpt (was Bump)
-                 // Fix: Ensure range -4.0 to 4.0 works with CreateSlider.
-                 // CreateSlider likely assumes 0-1 or similar if not robust?
-                 // Let's assume CreateSlider handles it, but verify step.
-                 grpNice.Controls.Add(CreateSlider("Tone Sculpt", -4.0, 4.0, 0.0, out tbBump, out nudBump, 0.1));
-                 tbBump.Scroll += (s,e) => ApplyValue("Bump", (double)nudBump.Value); 
-                 nudBump.ValueChanged += (s,e) => ApplyValue("Bump", (double)nudBump.Value);
-                 
-                 // Smart Contrast (Single Instance)
-                 grpNice.Controls.Add(CreateSlider("Smart Contrast", 0.0, 1.0, 0.0, out tbHdr, out nudHdr));
-                 tbHdr.Scroll += (s,e) => ApplyValue("Smart Contrast", (double)nudHdr.Value);
-                 nudHdr.ValueChanged += (s,e) => ApplyValue("Smart Contrast", (double)nudHdr.Value);
-                 
-                 pnlPro.Controls.Add(grpNice);
+                  // Per-Channel Effects
+                  grpSignal.Controls.Add(CreateSlider("Solarization", 0.0, 1.0, 0.0, out tbSolar, out nudSolar, width: 290, helpText: "Creates a surreal effect by inverting certain color levels."));
+                  grpSignal.Controls.Add(CreateSlider("Inversion", 0.0, 1.0, 0.0, out tbInversion, out nudInversion, width: 290, helpText: "Flips the colors of the screen (Negative effect)."));
+                  grpSignal.Controls.Add(CreateSlider("Clipping", -0.5, 0.5, 0.0, out tbClipping, out nudClipping, width: 290, helpText: "Cuts off intensity values at the extreme ends."));
+                  
+                  pnlPro.Controls.Add(grpSignal);
 
-                 // SPLIT TONING
-                 var grpSplit = CreateGroup("Split Toning", 330);
-                 grpSplit.Height = 160; // Increased height for Apply/Reset buttons
-                 
-                 Button CreateColorBtn(string name, Func<Color> get, Action<Color> set) {
-                     var b = new Button { Text = name, FlatStyle = FlatStyle.Flat, Width = 300, BackColor = get(), ForeColor = (get().R+get().G+get().B > 380 ? Color.Black : Color.White), Height = 30, Margin = new Padding(0,0,0,5) };
-                     b.Click += (s,e) => {
-                         using(var cd = new ColorDialog { Color = get(), FullOpen = true }) {
-                             if(cd.ShowDialog() == DialogResult.OK) {
-                                 set(cd.Color);
-                                 b.BackColor = cd.Color;
-                                 b.ForeColor = (cd.Color.R + cd.Color.G + cd.Color.B) > 380 ? Color.Black : Color.White;
-                                 // Don't update live yet? User asked for Apply button.
-                                 // But visual feedback on button is good.
-                             }
-                         }
-                     };
-                     return b;
-                 }
-                 
-                 btnShadow = CreateColorBtn("Shadow Tint", () => _gamma.ShadowTint, c => _gamma.ShadowTint = c);
-                 btnHigh = CreateColorBtn("Highlight Tint", () => _gamma.HighlightTint, c => _gamma.HighlightTint = c);
-                 
-                 grpSplit.Controls.Add(btnShadow);
-                 grpSplit.Controls.Add(btnHigh);
+                  // SPLIT TONING
+                  var grpSplit = CreateGroup("Split Toning", 310);
+                  grpSplit.Height = 115; // Shrunk as requested
+                  grpSplit.AutoSize = false;
+                  
+                  Button CreateColorBtn(string name, Func<Color> get, Action<Color> set) {
+                      var b = new Button { Text = name, FlatStyle = FlatStyle.Flat, Dock = DockStyle.Fill, BackColor = get(), ForeColor = (get().R+get().G+get().B > 380 ? Color.Black : Color.White), Height = 30, Margin = new Padding(2) };
+                      b.Click += (s,e) => {
+                          using(var cd = new ColorDialog { Color = get(), FullOpen = true }) {
+                              if(cd.ShowDialog() == DialogResult.OK) {
+                                  set(cd.Color);
+                                  b.BackColor = cd.Color;
+                                  b.ForeColor = (cd.Color.R + cd.Color.G + cd.Color.B) > 380 ? Color.Black : Color.White;
+                              }
+                          }
+                      };
+                      return b;
+                  }
+                  
+                  var tlpSplit = new TableLayoutPanel { Width = 290, Height = 75, ColumnCount = 2, RowCount = 2, Margin = new Padding(0, 5, 0, 0) };
+                  tlpSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+                  tlpSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+                  tlpSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+                  tlpSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
-                 var pnlSplitBtns = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0,5,0,0) };
-                 var btnSplitApply = new Button { Text = "Apply", Width = 145, Height=30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkGreen, ForeColor = Color.White, Margin = new Padding(0,0,10,0) };
-                 btnSplitApply.Click += (s,e) => { _gamma.Update(); DrawPreview(); SaveSettings(); };
-                 
-                 var btnSplitReset = new Button { Text = "Reset", Width = 145, Height=30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkRed, ForeColor = Color.White };
-                 btnSplitReset.Click += (s,e) => { 
-                     _gamma.ShadowTint = Color.Black; 
-                     _gamma.HighlightTint = Color.White; 
-                     btnShadow.BackColor = Color.Black; btnShadow.ForeColor = Color.White;
-                     btnHigh.BackColor = Color.White; btnHigh.ForeColor = Color.Black;
-                     _gamma.Update(); 
-                     SaveSettings(); 
-                 };
+                  btnShadow = CreateColorBtn("Shadow Tint", () => _gamma.ShadowTint, c => _gamma.ShadowTint = c);
+                  _tip.SetToolTip(btnShadow, "Select a color to tint the shadows (dark areas).");
+                  btnHigh = CreateColorBtn("Highlight Tint", () => _gamma.HighlightTint, c => _gamma.HighlightTint = c);
+                  _tip.SetToolTip(btnHigh, "Select a color to tint the highlights (bright areas).");
+                  
+                  var btnSplitApply = new Button { Text = "Apply", Dock = DockStyle.Fill, Height=30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkGreen, ForeColor = Color.White, Margin = new Padding(2) };
+                  btnSplitApply.Click += (s,e) => { _gamma.Update(); DrawPreview(); SaveSettings(); };
+                  var btnSplitReset = new Button { Text = "Reset", Dock = DockStyle.Fill, Height=30, FlatStyle = FlatStyle.Flat, BackColor = Color.DarkRed, ForeColor = Color.White, Margin = new Padding(2) };
+                  btnSplitReset.Click += (s,e) => { 
+                      _gamma.ShadowTint = Color.Black; _gamma.HighlightTint = Color.White; 
+                      btnShadow.BackColor = Color.Black; btnShadow.ForeColor = Color.White;
+                      btnHigh.BackColor = Color.White; btnHigh.ForeColor = Color.Black;
+                      _gamma.Update(); DrawPreview(); SaveSettings(); 
+                  };
 
-                 pnlSplitBtns.Controls.Add(btnSplitApply);
-                 pnlSplitBtns.Controls.Add(btnSplitReset);
-                 grpSplit.Controls.Add(pnlSplitBtns);
-
+                  tlpSplit.Controls.Add(btnShadow, 0, 0);       tlpSplit.Controls.Add(btnSplitApply, 1, 0);
+                  tlpSplit.Controls.Add(btnHigh, 0, 1);         tlpSplit.Controls.Add(btnSplitReset, 1, 1);
+                  
+                  grpSplit.Controls.Add(tlpSplit);
                   pnlPro.Controls.Add(grpSplit);
-                  
-                  // CURVE EDITOR SECTION
-                  var grpCurves = CreateGroup("Point Curves", 330);
-                  grpCurves.Height = 100;
-                  
-                  btnCurves = new CheckBox { Text = "Open Curve Editor", Appearance = Appearance.Button, Width = 300, Height = 35, BackColor = Color.DarkRed, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(Font.FontFamily, 9, FontStyle.Bold) };
+
+                  // CURVES
+                  var grpCurves = CreateGroup("Point Curves", 310);
+                  grpCurves.Height = 120; // 2px more shorter
+                  grpCurves.AutoSize = false;
+                  btnCurves = new CheckBox { Text = "Open Curve Editor", Appearance = Appearance.Button, Width = 290, Height = 35, BackColor = Color.DarkRed, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleCenter, Font = new Font(Font.FontFamily, 9, FontStyle.Bold) };
                   btnCurves.FlatAppearance.BorderSize = 1;
                   btnCurves.FlatAppearance.BorderColor = Color.White;
                   btnCurves.CheckedChanged += (s, e) => {
@@ -1053,18 +1305,12 @@ namespace GamerGamma
                                _curveEditor = new PointCurveEditorForm(_gamma, () => DrawPreview());
                                _curveEditor.FormClosed += (fs, fe) => { btnCurves.Checked = false; _curveEditor = null; };
                                _curveEditor.Show();
-                           } else {
-                               _curveEditor.BringToFront();
-                           }
+                           } else { _curveEditor.BringToFront(); }
                        } else {
-                           if (_curveEditor != null && !_curveEditor.IsDisposed) {
-                               _curveEditor.Close();
-                           }
+                           if (_curveEditor != null && !_curveEditor.IsDisposed) _curveEditor.Close();
                        }
                   };
-                  
-                  var lblCurveInfo = new Label { Text = "Advanced manual curve control for professionals.", ForeColor = Color.Gray, Font = new Font("Segoe UI", 8, FontStyle.Italic), AutoSize = true, Margin = new Padding(5, 5, 0, 0) };
-                  
+                  var lblCurveInfo = new Label { Text = "Advanced manual curve control for professionals.", ForeColor = Color.Gray, Font = new Font("Segoe UI", 7, FontStyle.Italic), AutoSize = false, Width=290, Height=40, Margin = new Padding(0, 10, 0, 0) };
                   grpCurves.Controls.Add(btnCurves);
                   grpCurves.Controls.Add(lblCurveInfo);
                   pnlPro.Controls.Add(grpCurves);
@@ -1086,26 +1332,26 @@ namespace GamerGamma
             using (var g = Graphics.FromImage(previewBox.Image)) {
                  g.Clear(Color.Black);
                  // Draw Grid (4x4 segments)
-                 using (var p = new Pen(Color.FromArgb(40, 40, 40), 1)) {
-                     // Vertical (X Axis)
-                     for (int i = 0; i <= 4; i++) {
-                         int pos = i * w / 4;
-                         if (i == 4) pos = w - 1; // Ensure last line is at the edge
-                         g.DrawLine(p, pos, 0, pos, h);
-                         
-                         string s = i.ToString();
-                         g.DrawString(s, new Font("Arial", 8), Brushes.Gray, pos - (i==4?12:0), h - 15);
-                     }
-                     // Horizontal (Y Axis)
-                     for(int i=0; i<=4; i++) {
-                         int pos = i * h / 4;
-                         if (i==4) pos = h - 1; // Ensure last line is at the edge
-                         g.DrawLine(p, 0, pos, w, pos);
-                         
-                         string s = (4-i).ToString(); 
-                         g.DrawString(s, new Font("Arial", 8), Brushes.Gray, 2, pos == h-1 ? pos-15 : pos);
-                     }
-                 }
+                  using (var p = new Pen(Color.FromArgb(40, 40, 40), 1)) {
+                      // Vertical (X Axis)
+                      for (int i = 0; i <= 4; i++) {
+                          int pos = i * w / 4;
+                          if (i == 4) pos = w - 1; 
+                          g.DrawLine(p, pos, 0, pos, h);
+                          
+                          int val = i * 255 / 4;
+                          g.DrawString(val.ToString(), new Font("Arial", 8), Brushes.Gray, pos - (i==4?25:0), h - 15);
+                      }
+                      // Horizontal (Y Axis)
+                      for(int i=0; i<=4; i++) {
+                          int pos = i * h / 4;
+                          if (i==4) pos = h - 1; 
+                          g.DrawLine(p, 0, pos, w, pos);
+                          
+                          int val = (4-i) * 255 / 4;
+                          g.DrawString(val.ToString(), new Font("Arial", 8), Brushes.Gray, 2, pos == h-1 ? pos-15 : pos);
+                      }
+                  }
 
                  g.DrawRectangle(Pens.Gray, 0, 0, w - 1, h - 1);
                  var (rRamp, gRamp, bRamp) = _gamma.GetRamp();
